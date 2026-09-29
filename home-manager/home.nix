@@ -1,0 +1,260 @@
+# User environment — shell, editor, terminal, and the polyglot dev toolchain.
+#
+# This is a NixOS home-manager module (loaded by nixos/configuration.nix with
+# useGlobalPkgs), not a standalone homeConfiguration, so it deliberately does
+# not set home.username, home.homeDirectory, or nixpkgs.config — the system
+# config owns those.
+{ lib, pkgs, ... }:
+
+let
+  dotfiles = ../dotfiles;
+in {
+  home.stateVersion = "26.05";
+
+  # --- Git ---
+  programs.git = {
+    enable = true;
+    userName = "Adem Hoskin";
+    userEmail = "ademjhoskin@gmail.com";
+    extraConfig = {
+      init.defaultBranch = "main";
+      pull.rebase = true;
+    };
+  };
+
+  # --- Shell: zsh ---
+  programs.zsh = {
+    enable = true;
+    enableCompletion = true;
+    enableAutosuggestions = true;
+    enableSyntaxHighlighting = true;
+
+    history = {
+      size = 5000;
+      save = 5000;
+      path = "$HOME/.histfile";
+      ignoreDups = true;
+      ignoreAllDups = true;
+      ignoreSpace = true;
+      share = true;
+    };
+
+    shellAliases = {
+      ls = "eza --icons --group-directories-first";
+      ll = "eza -lh --icons --git --group-directories-first";
+      la = "eza -lah --icons --git --group-directories-first";
+      tree = "eza --tree --icons";
+      top = "btm";
+      jq = "jq -C";
+    };
+
+    initExtra = ''
+      # powerlevel10k prompt + the saved config
+      source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
+      [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+      # hackery red prompt overrides
+      POWERLEVEL9K_PROMPT_CHAR_OK_VIINS_FOREGROUND='#ff3b30'
+      POWERLEVEL9K_PROMPT_CHAR_OK_VICMD_FOREGROUND='#ff3b30'
+      POWERLEVEL9K_PROMPT_CHAR_OK_VIVIS_FOREGROUND='#ff3b30'
+      POWERLEVEL9K_DIR_FOREGROUND='#ff3b30'
+      POWERLEVEL9K_VCS_FOREGROUND='#8a1f1f'
+      POWERLEVEL9K_TIME_FOREGROUND='#8a1f1f'
+      POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND='#ff3b30'
+      POWERLEVEL9K_VIRTUALENV_FOREGROUND='#8a1f1f'
+
+      # fzf-tab (tab completion with previews)
+      source ${pkgs.zsh-fzf-tab}/share/zsh-fzf-tab/fzf-tab.plugin.zsh
+
+      # history + autosuggest bindings
+      bindkey '^p' history-search-backward
+      bindkey '^n' history-search-forward
+      bindkey "^f" autosuggest-accept
+
+      alias zii="zoxide query -i"
+
+      # fzf + ripgrep — fuzzy search code and open in $EDITOR
+      frg() {
+        rg --line-number --no-heading --color=always "$@" | \
+          fzf --ansi --delimiter : --preview "bat --color=always --highlight-line {2} {1}" | \
+          awk -F: '{print $1 " +" $2}' | xargs -r ''${EDITOR:-nvim}
+      }
+
+      export CC=clang
+      export CXX=clang++
+    '';
+  };
+
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  # --- Environment ---
+  home.sessionVariables = {
+    EDITOR = "nvim";
+    VISUAL = "nvim";
+
+    # Claude Code routed at DeepSeek's Anthropic-compatible endpoint.
+    ANTHROPIC_BASE_URL = "https://api.deepseek.com/anthropic";
+    ANTHROPIC_MODEL = "deepseek-flash";
+    ANTHROPIC_DEFAULT_OPUS_MODEL = "deepseek-flash";
+    ANTHROPIC_DEFAULT_SONNET_MODEL = "deepseek-flash";
+    ANTHROPIC_DEFAULT_HAIKU_MODEL = "deepseek-flash";
+    CLAUDE_CODE_SUBAGENT_MODEL = "deepseek-flash";
+    CLAUDE_CODE_EFFORT_LEVEL = "ultracode";
+    # ANTHROPIC_API_KEY is a secret and is deliberately not here. Set it in a
+    # file this repo does not track; see the README.
+  };
+
+  # --- Config from this repo ---
+  #
+  # Neovim is symlinked file-by-file rather than as a whole directory: LazyVim
+  # rewrites lazyvim.json and lazy-lock.json at runtime, and a store symlink is
+  # read-only, so a wholesale `".config/nvim".source = ...` makes plugin and
+  # extras changes fail. Those two files are seeded as writable copies instead.
+  home.file = {
+    ".config/nvim/init.lua".source = "${dotfiles}/nvim/init.lua";
+    ".config/nvim/lua".source = "${dotfiles}/nvim/lua";
+    ".config/nvim/stylua.toml".source = "${dotfiles}/nvim/stylua.toml";
+    ".config/nvim/.neoconf.json".source = "${dotfiles}/nvim/.neoconf.json";
+
+    ".config/tmux/tmux.conf".source = "${dotfiles}/tmux/tmux.conf";
+    ".config/hypr/hyprland.conf".source = "${dotfiles}/hypr/hyprland.conf";
+    ".config/hypr/hyprpaper.conf".source = "${dotfiles}/hypr/hyprpaper.conf";
+    ".config/hypr/wallpaper.png".source = "${dotfiles}/hypr/wallpaper.png";
+    ".p10k.zsh".source = "${dotfiles}/p10k.zsh";
+
+    # so tmux.conf's `run ~/.tmux/plugins/tpm/tpm` resolves
+    ".tmux/plugins/tpm".source = "${pkgs.tmuxPlugins.tpm}/share/tmux-plugins/tpm";
+
+    # Doom Emacs user config. Only the inputs Doom *reads* are symlinked; the
+    # rest of ~/.config/doom/ stays a normal writable directory so Doom can drop
+    # custom.el and anything else it wants alongside them.
+    ".config/doom/init.el".source = "${dotfiles}/doom/init.el";
+    ".config/doom/packages.el".source = "${dotfiles}/doom/packages.el";
+    ".config/doom/config.el".source = "${dotfiles}/doom/config.el";
+  };
+
+  # Doom itself cannot be a store symlink the way the other dotfiles are:
+  # `doom sync` writes byte-compiled packages into ~/.config/emacs/.local, and a
+  # read-only store path would make every module change fail. So clone it once
+  # into a real directory. Wrapped in a test so rebuilds are a no-op.
+  home.activation.installDoom = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ ! -d "$HOME/.config/emacs/bin" ]; then
+      run ${pkgs.git}/bin/git clone --depth 1 \
+        https://github.com/doomemacs/doomemacs "$HOME/.config/emacs"
+    fi
+  '';
+
+  # Seed the two LazyVim state files as writable copies, once.
+  home.activation.seedLazyVimState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    mkdir -p "$HOME/.config/nvim"
+    for f in lazyvim.json lazy-lock.json; do
+      if [ ! -e "$HOME/.config/nvim/$f" ]; then
+        run cp ${dotfiles}/nvim/$f "$HOME/.config/nvim/$f"
+        run chmod u+w "$HOME/.config/nvim/$f"
+      fi
+    done
+  '';
+
+  # --- Dev toolchain ---
+  home.packages = with pkgs; [
+    # core / shell
+    neovim
+    tmux
+    ripgrep   # also what Doom's search uses
+    fd
+    bat
+    eza
+    glow
+    bottom
+
+    # Doom Emacs. libtool/libvterm/texinfo are the build inputs `doom sync`
+    # needs for the term/vterm module and for building some packages from
+    # source; without them that step fails on NixOS with a compile error.
+    emacs
+    libtool
+    libvterm
+    texinfo
+    # git tooling
+    git-delta
+    lazygit
+    gh
+    just
+
+    # C / C++
+    clang
+    clang-tools
+    lld
+    lldb
+    gnumake
+    cmake
+    ninja
+    pkg-config
+    gdb
+    valgrind
+    doxygen
+    codelldb
+
+    # Rust
+    cargo
+    rustc
+    rustfmt
+    clippy
+    rust-analyzer
+
+    # Go
+    go
+    gopls
+    gofumpt
+    goimports
+    delve
+
+    # Zig
+    zig
+
+    # Java / .NET
+    jdk21
+    dotnet-sdk
+
+    # Nix
+    nil
+    nixfmt-rfc-style
+
+    # Node / JS
+    nodejs
+    bun
+    nodePackages.pnpm
+    nodePackages.yarn
+    nodePackages.npm
+
+    # Python
+    python3
+    uv
+    pipx
+    black
+    isort
+    debugpy
+
+    # OCaml
+    ocaml
+    opam
+    dune_3
+
+    # Formatting / linting
+    prettier
+    stylua
+    shfmt
+    shellcheck
+
+    # misc
+    yaml-language-server
+    awscli2
+    subversion
+  ];
+}

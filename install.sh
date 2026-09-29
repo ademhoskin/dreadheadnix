@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+#
+# Run this from the dreadheadnix installer ISO, as root.
+#
+# It partitions and formats the target disk with disko, then installs the
+# system from the copy of this repo baked into the ISO at /etc/dreadheadnix.
+#
+#   DESTROYS THE ENTIRE TARGET DISK. There is no undo and no dual-boot support.
+#
+set -euo pipefail
+
+REPO="${REPO:-/etc/dreadheadnix}"
+FLAKE_ATTR="${REPO}#inspiron"
+DISK="${DISK:-/dev/nvme0n1}"
+MOUNT="${MOUNT:-/mnt}"
+SECRET_DIR="${MOUNT}/var/lib/nixos-secrets"
+SECRET_FILE="${SECRET_DIR}/passwd"
+
+log()  { printf '\033[1;31m[dreadheadnix]\033[0m %s\n' "$*"; }
+die()  { printf '\033[1;31m[dreadheadnix] error:\033[0m %s\n' "$*" >&2; exit 1; }
+
+# --- Preconditions -----------------------------------------------------------
+
+[[ $EUID -eq 0 ]] || die "run this as root."
+
+[[ -d "$REPO" ]] || die "$REPO not found. This script is meant to run from the
+custom ISO, which bakes the repo in there. On a stock NixOS ISO, clone the repo
+and point REPO at it: REPO=/path/to/dreadheadnix $0"
+
+[[ -f "$REPO/flake.nix" ]] || die "$REPO has no flake.nix — the baked copy looks wrong."
+
+[[ -b "$DISK" ]] || die "$DISK is not a block device. Set DISK=/dev/... and retry.
+Available disks:
+$(lsblk -dpno NAME,SIZE,MODEL)"
+
+[[ -d /sys/firmware/efi ]] || die "not booted in UEFI mode; this layout assumes UEFI."
+
+# --- Confirm the destructive step --------------------------------------------
+
+log "Target disk : $DISK"
+lsblk -o NAME,SIZE,TYPE,FILESYSTEM,MODEL "$DISK" || true
+echo
+log "Everything on $DISK will be erased."
+read -r -p "Type the disk path again to confirm: " confirm
+[[ "$confirm" == "$DISK" ]] || die "confirmation did not match; nothing was changed."
+
+# --- User password -----------------------------------------------------------
+#
+# The repo is public, so no password (hashed or otherwise) is committed. The
+# hash is generated here and written straight into the target's /var/lib, which
+# is outside the repo. nixos/configuration.nix reads it via hashedPasswordFile.
+
+echo
+read -r -s -p "Password for dreadheadcoder: " pw1; echo
+read -r -s -p "Repeat: " pw2; echo
+[[ "$pw1" == "$pw2" ]] || die "passwords did not match."
+[[ -n "$pw1" ]] || die "empty password refused."
+
+hash_password() {
+  if command -v mkpasswd >/dev/null 2>&1; then
+    mkpasswd -m sha-512 -s
+  elif command -v openssl >/dev/null 2>&1; then
+    openssl passwd -6 -stdin
+  else
+    die "neither mkpasswd nor openssl is available to hash the password."
+  fi
+}
+
+# Read from stdin so the password never reaches the process list.
+pw_hash="$(printf '%s' "$pw1" | hash_password)"
+unset pw1 pw2
+
+# --- Partition, format, mount ------------------------------------------------
+
+log "Partitioning $DISK with disko..."
+disko --mode destroy,format,mount "$REPO/nixos/disko.nix" --arg disk "$DISK" --yes-wipe-all-disks
+
+# disko mounts the installed system by partition *label* (via
+# /dev/disk/by-partlabel), so a label that failed to appear means an unbootable
+# system rather than a cosmetic problem. Check before going further.
+log "Verifying partition labels..."
+for label in disk-main-ESP disk-main-root; do
+  if [[ ! -e "/dev/disk/by-partlabel/${label}" ]]; then
+    udevadm trigger --subsystem-match=block || true
+    udevadm settle || true
+    [[ -e "/dev/disk/by-partlabel/${label}" ]] || die "missing /dev/disk/by-partlabel/${label}.
+The btrfs partition did not get its label, which would produce an unbootable
+system. Nothing has been installed. Re-run disko, or switch the root partition
+in nixos/disko.nix from \`size = \"100%\"\` to an explicit size."
+  fi
+done
+
+# --- Install -----------------------------------------------------------------
+
+mkdir -p "$SECRET_DIR"
+printf '%s\n' "$pw_hash" > "$SECRET_FILE"
+chmod 600 "$SECRET_FILE"
+chmod 700 "$SECRET_DIR"
+unset pw_hash
+
+log "Installing NixOS from $FLAKE_ATTR (this fetches inputs and builds)..."
+nixos-install \
+  --flake "$FLAKE_ATTR" \
+  --root "$MOUNT" \
+  --no-root-password \
+  --no-channel-copy
+
+log "Done. Remove the USB and reboot."
+log "After reboot, sign in as dreadheadcoder and run:"
+log "  sudo nixos-rebuild switch --flake /etc/dreadheadnix#inspiron"

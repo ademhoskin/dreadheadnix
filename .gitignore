@@ -1,0 +1,34 @@
+# Nix build outputs
+result
+result-*
+
+# direnv
+.direnv/
+.envrc
+
+# secrets — keep API keys out of git
+secrets.nix
+.env
+.env.local
+
+# editor / OS cruft
+*.swp
+*~
+.DS_Store
+
+# generated machine-specific config
+#
+# The hardware config here is hand-written (nixos/hardware.nix) rather than
+# generated, because the installer ISO is built in CI before the laptop is ever
+# seen. This entry is a guard in case you do run nixos-generate-config on the
+# machine: keep the result out of the tree and merge what you need into
+# nixos/hardware.nix by hand.
+nixos/hardware-configuration.nix
+
+# the password hash is generated at install time and lives in /var/lib on the
+# target, never here — this repo is public
+passwd
+
+# local ISO builds and QEMU rehearsal disks
+*.iso
+*.qcow2

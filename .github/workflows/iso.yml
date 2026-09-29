@@ -1,0 +1,57 @@
+name: iso
+
+# Builds the installer ISO. This is also the only thing that evaluates the
+# NixOS config end to end — there is no Nix on the machine this repo is
+# developed on, so CI is where a bad option name or a broken import surfaces.
+#
+# We deliberately do NOT run `nix flake check`: it evaluates every output,
+# including the ISO, which duplicates this job and takes roughly as long.
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nixos/**'
+      - 'home-manager/**'
+      - 'dotfiles/**'
+      - '.github/workflows/iso.yml'
+  workflow_dispatch:
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Free disk space
+        # A NixOS ISO build plus its closure does not fit in the default
+        # runner's free space alongside the preinstalled toolchains.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
+          df -h /
+
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            max-jobs = auto
+
+      - name: Build ISO
+        run: nix build .#nixosConfigurations.installer.config.system.build.isoImage -L
+
+      - name: Report size
+        run: ls -lh result/iso/
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: dreadheadnix-iso
+          path: result/iso/*.iso
+          # The ISO is already compressed; re-compressing it wastes minutes.
+          compression-level: 0
+          retention-days: 14
