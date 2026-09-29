@@ -18,7 +18,11 @@ WORK="${2:-$(mktemp -d)}"
 mkdir -p "$WORK"
 
 PORT="${SSH_PORT:-2222}"
-MEM="${MEM:-4096}"
+# 4G was not enough: install.sh died with exit 137 (SIGKILL) partway through
+# nixos-install, which is the OOM killer. Evaluating a full NixOS config and
+# assembling its closure peaks well above that, and the live image has no swap
+# to fall back on. GitHub's standard runners have 16G, so 8G is safe here.
+MEM="${MEM:-8192}"
 DISK_SIZE="${DISK_SIZE:-20G}"
 # The disk is attached as a QEMU NVMe device, not virtio-blk, so the guest sees
 # the same /dev/nvme0n1 the laptop has. That keeps the rehearsal on the same
