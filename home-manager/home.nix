@@ -170,9 +170,6 @@ in {
     ".config/hypr/wallpaper.png".source = "${dotfiles}/hypr/wallpaper.png";
     ".p10k.zsh".source = "${dotfiles}/p10k.zsh";
 
-    # so tmux.conf's `run ~/.tmux/plugins/tpm/tpm` resolves
-    ".tmux/plugins/tpm".source = "${pkgs.tmuxPlugins.tpm}/share/tmux-plugins/tpm";
-
     # Doom Emacs user config. Only the inputs Doom *reads* are symlinked; the
     # rest of ~/.config/doom/ stays a normal writable directory so Doom can drop
     # custom.el and anything else it wants alongside them.
@@ -190,6 +187,18 @@ in {
     ".claude/CLAUDE.md".source = "${claude}/CLAUDE.md";
     ".claude/settings.json".source = "${claude}/settings.json";
   };
+
+  # tpm — the tmux plugin manager that tmux.conf drives directly with
+  # `run ~/.tmux/plugins/tpm/tpm` — is not packaged in nixpkgs. tmuxPlugins
+  # carries cpu, fpp and others but no tpm, and it is not a top-level package
+  # either. So clone it, for the same reason as Doom: the declarative route
+  # (fetchFromGitHub) needs a hash, and there is no Nix here to compute one.
+  home.activation.installTpm = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ ! -f "$HOME/.tmux/plugins/tpm/tpm" ]; then
+      run ${pkgs.git}/bin/git clone --depth 1 \
+        https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
+    fi
+  '';
 
   # Doom itself cannot be a store symlink the way the other dotfiles are:
   # `doom sync` writes byte-compiled packages into ~/.config/emacs/.local, and a
