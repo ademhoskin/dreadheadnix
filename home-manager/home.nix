@@ -15,9 +15,13 @@ in {
   # --- Git ---
   programs.git = {
     enable = true;
-    userName = "Adem Hoskin";
-    userEmail = "ademjhoskin@gmail.com";
-    extraConfig = {
+    # userName/userEmail/extraConfig were renamed to settings.*; the old
+    # spellings still work but warn on every evaluation.
+    settings = {
+      user = {
+        name = "Adem Hoskin";
+        email = "ademjhoskin@gmail.com";
+      };
       init.defaultBranch = "main";
       pull.rebase = true;
     };
@@ -27,8 +31,9 @@ in {
   programs.zsh = {
     enable = true;
     enableCompletion = true;
-    enableAutosuggestions = true;
-    enableSyntaxHighlighting = true;
+    # Both moved under a namespace; the enable* spellings are deprecated.
+    autosuggestion.enable = true;
+    syntaxHighlighting.enable = true;
 
     history = {
       size = 5000;
@@ -49,7 +54,7 @@ in {
       jq = "jq -C";
     };
 
-    initExtra = ''
+    initContent = ''
       # powerlevel10k prompt + the saved config
       source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
       [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
@@ -290,9 +295,9 @@ in {
     jdk21
     dotnet-sdk
 
-    # Nix
+    # Nix. nixfmt-rfc-style is now the same package as nixfmt and warns.
     nil
-    nixfmt-rfc-style
+    nixfmt
 
     # Node / JS
     nodejs   # provides npm

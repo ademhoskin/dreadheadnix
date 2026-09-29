@@ -62,7 +62,7 @@ trap cleanup EXIT
 [[ -f "$ISO" ]] || die "ISO not found: $ISO"
 [[ -w /dev/kvm ]] || die "/dev/kvm is not writable; the runner needs KVM."
 command -v qemu-system-x86_64 >/dev/null || die "qemu-system-x86_64 not on PATH."
-command -v sshpass >/dev/null || die "sshpass not on PATH (needed for password auth)."
+command -v ssh >/dev/null || die "ssh not on PATH."
 
 OVMF_CODE=""
 OVMF_VARS_SRC=""
@@ -70,11 +70,22 @@ for pair in \
   /usr/share/OVMF/OVMF_CODE_4M.fd:/usr/share/OVMF/OVMF_VARS_4M.fd \
   /usr/share/OVMF/OVMF_CODE.fd:/usr/share/OVMF/OVMF_VARS.fd \
   /usr/share/OVMF/OVMF_CODE.ms.fd:/usr/share/OVMF/OVMF_VARS.ms.fd \
+  /usr/share/edk2-ovmf/x64/OVMF_CODE.4m.fd:/usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd \
+  /usr/share/edk2/x64/OVMF_CODE.4m.fd:/usr/share/edk2/x64/OVMF_VARS.4m.fd \
   /usr/share/ovmf/OVMF.fd:/usr/share/ovmf/OVMF_VARS.fd; do
   c="${pair%%:*}"; v="${pair##*:}"
   if [[ -f "$c" && -f "$v" ]]; then OVMF_CODE="$c"; OVMF_VARS_SRC="$v"; break; fi
 done
-[[ -n "$OVMF_CODE" ]] || die "no OVMF firmware found; install the 'ovmf' package."
+[[ -n "$OVMF_CODE" ]] || die "no OVMF firmware found; install ovmf (Arch: edk2-ovmf)."
+
+# Password auth via SSH_ASKPASS rather than sshpass: it needs no extra package,
+# and stock OpenSSH 8.4+ honours SSH_ASKPASS_REQUIRE=force without a tty or a
+# DISPLAY. sshpass would otherwise be a hard dependency for no benefit.
+ASKPASS="$WORK/askpass.sh"
+printf '#!/bin/sh\nprintf "%%s\\n" %s\n' "$(printf '%q' "$PW")" > "$ASKPASS"
+chmod 700 "$ASKPASS"
+export SSH_ASKPASS="$ASKPASS"
+export SSH_ASKPASS_REQUIRE=force
 
 log "ISO       : $ISO"
 log "workdir   : $WORK"
@@ -88,13 +99,17 @@ qemu-img create -f qcow2 "$DISK_IMG" "$DISK_SIZE" >/dev/null
 # Held as an array so the install step can wrap the same command in `timeout`,
 # which only works on a real command and not on a shell function.
 SSH_BASE=(
-  sshpass -p "$PW" ssh
+  ssh
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
   -o LogLevel=ERROR
   -o ConnectTimeout=10
   -o ServerAliveInterval=30
   -o ServerAliveCountMax=10
+  # The live image's root has only a password. Without this, ssh offers keys
+  # first and can exhaust MaxAuthTries before ever reaching the password.
+  -o PreferredAuthentications=password
+  -o PubkeyAuthentication=no
 )
 
 ssh_vm() { "${SSH_BASE[@]}" -p "$PORT" root@127.0.0.1 "$@"; }

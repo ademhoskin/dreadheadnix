@@ -52,7 +52,10 @@ nix eval --extra-experimental-features 'nix-command flakes' --raw \
 # --- Confirm the destructive step --------------------------------------------
 
 log "Target disk : $DISK"
-lsblk -o NAME,SIZE,TYPE,FILESYSTEM,MODEL "$DISK" || true
+# Default columns only. The live image's lsblk rejects FILESYSTEM and MODEL
+# with "unknown column", so asking for them prints nothing useful at exactly the
+# moment the user needs to confirm they are about to erase the right disk.
+lsblk "$DISK" || true
 echo
 log "Everything on $DISK will be erased."
 read -r -p "Type the disk path again to confirm: " confirm
