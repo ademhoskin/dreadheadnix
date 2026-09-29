@@ -72,7 +72,7 @@ Two jobs, and they check very different things.
 
 **`install-test`** is the one that matters for safety. It boots the ISO under UEFI in QEMU against a blank disk, runs `install.sh` for real, then reboots into the installed system and asserts it came up. It is the only thing that ever executes `install.sh`, which is otherwise the most dangerous file here with zero coverage.
 
-It uses two CI-only flake outputs, `installerTest` and `inspironTest`, which differ from the real ones *only* in SSH policy — that is how the job gets a shell to drive the install with. The disk layout, `install.sh`, `nixos-install` and the bootloader are identical, so the rehearsal exercises the same code path you will.
+It uses two CI-only flake outputs, `installerTest` and `inspironTest`, which differ from the real ones only in SSH policy and hostname — that is how the job gets a shell to drive the install with, and the hostname is how it proves it reached the installed system rather than the live image. The disk layout, `install.sh`, `nixos-install` and the bootloader are identical, so the rehearsal exercises the same code path you will.
 
 A green `build-iso` means "this should install". A green `install-test` means "this does install". Neither says anything about the hardware — only the laptop can tell you that.
 

@@ -183,6 +183,13 @@
     };
   };
 
+  # The repo, on the installed system. nixos/installer.nix sets this for the
+  # live ISO, but that module is only imported by `installer`/`installerTest` —
+  # without this entry here, nixos-install copies nothing to the target and
+  # `nixos-rebuild switch --flake /etc/dreadheadnix#inspiron` fails with "path
+  # does not exist". This is what makes post-install updates work with no clone.
+  environment.etc."dreadheadnix".source = inputs.self.outPath;
+
   # --- Home Manager ---
   home-manager = {
     useGlobalPkgs = true;

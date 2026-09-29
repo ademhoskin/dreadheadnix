@@ -14,9 +14,10 @@
   # The repo, as this flake sees it. `environment.etc` symlinks rather than
   # copies, so /etc/dreadheadnix points into the store.
   #
-  # Consequence worth knowing: this lands on the *installed* system too, so
-  # `nixos-rebuild switch --flake /etc/dreadheadnix#inspiron` keeps working
-  # afterwards without re-cloning anything.
+  # This copy is for the live environment only — `installer` and `installerTest`
+  # do not import nixos/configuration.nix. The installed system gets its own
+  # copy, from the matching entry in configuration.nix; that one is what makes
+  # `nixos-rebuild switch --flake /etc/dreadheadnix#inspiron` work after install.
   #
   # It does not make the install offline: nixos-install still runs
   # `nix flake metadata` and fetches the github: inputs, then realises the

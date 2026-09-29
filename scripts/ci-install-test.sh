@@ -26,8 +26,10 @@ DISK_SIZE="${DISK_SIZE:-20G}"
 VM_DISK="/dev/nvme0n1"
 
 # Which flake attribute install.sh installs. This is the CI-only variant of the
-# laptop config, which differs from `inspiron` only in SSH policy — see the
-# nixosConfigurations block in flake.nix.
+# laptop config, which differs from `inspiron` only in SSH policy and hostname
+# — see the nixosConfigurations block in flake.nix. The hostname matters here:
+# boot 2 asserts against it to prove it reached the installed system and not
+# the live image.
 HOST_ATTR="inspironTest"
 
 # Where the ISO bakes the repo in, and therefore where install.sh lives once the
