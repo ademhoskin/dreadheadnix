@@ -82,7 +82,11 @@
           disko.nixosModules.disko
           ./nixos/configuration.nix
           ({ lib, ... }: {
-            networking.hostName = "dreadheadnix-test";
+            # mkForce, not a plain assignment: nixos/configuration.nix already
+            # sets networking.hostName, and two same-priority definitions of a
+            # str option is a hard evaluation error — which would take down the
+            # CI eval step and install.sh's pre-flight check.
+            networking.hostName = lib.mkForce "dreadheadnix-test";
             services.openssh.settings = {
               PasswordAuthentication = lib.mkForce true;
               PermitRootLogin = lib.mkForce "yes";

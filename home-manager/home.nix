@@ -64,8 +64,11 @@ in {
       POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND='#ff3b30'
       POWERLEVEL9K_VIRTUALENV_FOREGROUND='#8a1f1f'
 
-      # fzf-tab (tab completion with previews)
-      source ${pkgs.zsh-fzf-tab}/share/zsh-fzf-tab/fzf-tab.plugin.zsh
+      # fzf-tab (tab completion with previews). The package installs under
+      # share/fzf-tab, not share/zsh-fzf-tab — and because this is a plain
+      # string, nothing catches a wrong path at build time; every new shell
+      # would just print "no such file or directory".
+      source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh
 
       # history + autosuggest bindings
       bindkey '^p' history-search-backward
@@ -137,11 +140,9 @@ in {
     CLAUDE_CODE_SUBAGENT_MODEL = "deepseek-flash[1m]";
     CLAUDE_CODE_EFFORT_LEVEL = "ultracode";
 
-    # QtWebEngine — qutebrowser's rendering engine — does not enable hardware
-    # video decode on its own, and software-decoding video is what actually
-    # drains a laptop battery while browsing. The Iris Xe VA-API driver comes
-    # from hardware.graphics.extraPackages in nixos/hardware.nix.
-    QTWEBENGINE_CHROMIUM_FLAGS = "--enable-features=VaapiVideoDecodeLinuxGL,VaapiVideoDecoder";
+    # QTWEBENGINE_CHROMIUM_FLAGS is set in dotfiles/hypr/hyprland.conf instead.
+    # home.sessionVariables only reaches shells and systemd user units, so a
+    # qutebrowser launched from a keybind would not see it there.
 
     # ANTHROPIC_AUTH_TOKEN is deliberately absent: home.sessionVariables are
     # evaluated at build time, so anything here lands in the world-readable
@@ -151,10 +152,12 @@ in {
 
   # --- Config from this repo ---
   #
-  # Neovim is symlinked file-by-file rather than as a whole directory: LazyVim
-  # rewrites lazyvim.json and lazy-lock.json at runtime, and a store symlink is
-  # read-only, so a wholesale `".config/nvim".source = ...` makes plugin and
-  # extras changes fail. Those two files are seeded as writable copies instead.
+  # Neovim's config is symlinked entry-by-entry rather than as one directory:
+  # LazyVim rewrites lazyvim.json and lazy-lock.json at runtime, and a store
+  # symlink is read-only, so a wholesale `".config/nvim".source = ...` makes
+  # plugin and extras changes fail. Those two files are seeded as writable
+  # copies instead. (The `lua` subtree is still symlinked whole — LazyVim only
+  # reads from it.)
   home.file = {
     ".config/nvim/init.lua".source = "${dotfiles}/nvim/init.lua";
     ".config/nvim/lua".source = "${dotfiles}/nvim/lua";
@@ -194,7 +197,10 @@ in {
   # into a real directory. Wrapped in a test so rebuilds are a no-op.
   home.activation.installDoom = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ ! -d "$HOME/.config/emacs/bin" ]; then
-      run ${pkgs.git}/bin/git clone --depth 1 \
+      # --recurse-submodules is load-bearing. Doom's module tree is the
+      # sources/doom+ submodule; without it the clone has no modules at all and
+      # every entry in init.el is silently ignored.
+      run ${pkgs.git}/bin/git clone --depth 1 --recurse-submodules \
         https://github.com/doomemacs/doomemacs "$HOME/.config/emacs"
     fi
   '';
@@ -233,8 +239,8 @@ in {
     # Claude Code, from nixpkgs rather than npm. Unfree — it ships a prebuilt
     # binary — so it rides on nixpkgs.config.allowUnfree in the system config.
     claude-code
-    # git tooling
-    git-delta
+    # git tooling. The package is `delta`; `git-delta` is not an attribute.
+    delta
     lazygit
     gh
     just
@@ -251,7 +257,8 @@ in {
     gdb
     valgrind
     doxygen
-    codelldb
+    # codelldb was here but is not an attribute in nixpkgs 26.05. Neovim's dap
+    # setup will need a debug adapter configured another way if you want it.
 
     # Rust
     cargo
@@ -264,7 +271,7 @@ in {
     go
     gopls
     gofumpt
-    goimports
+    gotools   # provides the goimports binary; `goimports` is not an attribute
     delve
 
     # Zig
@@ -279,11 +286,12 @@ in {
     nixfmt-rfc-style
 
     # Node / JS
-    nodejs
+    nodejs   # provides npm
     bun
-    nodePackages.pnpm
-    nodePackages.yarn
-    nodePackages.npm
+    # nodePackages was removed in 26.05 and now throws; these moved to the top
+    # level.
+    pnpm
+    yarn
 
     # Python
     python3
@@ -291,7 +299,7 @@ in {
     pipx
     black
     isort
-    debugpy
+    python3Packages.debugpy   # not top-level
 
     # OCaml
     ocaml
