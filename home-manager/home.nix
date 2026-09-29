@@ -105,6 +105,23 @@ in {
     enableZshIntegration = true;
   };
 
+  # --- Default applications ---
+  #
+  # Without this, nothing handles text/html or the http(s) schemes, and
+  # clicking a link in another application silently does nothing rather than
+  # failing loudly.
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      "text/html" = "org.qutebrowser.qutebrowser.desktop";
+      "application/xhtml+xml" = "org.qutebrowser.qutebrowser.desktop";
+      "x-scheme-handler/http" = "org.qutebrowser.qutebrowser.desktop";
+      "x-scheme-handler/https" = "org.qutebrowser.qutebrowser.desktop";
+      "x-scheme-handler/about" = "org.qutebrowser.qutebrowser.desktop";
+      "x-scheme-handler/unknown" = "org.qutebrowser.qutebrowser.desktop";
+    };
+  };
+
   # --- Environment ---
   home.sessionVariables = {
     EDITOR = "nvim";
@@ -119,6 +136,12 @@ in {
     ANTHROPIC_DEFAULT_HAIKU_MODEL = "deepseek-flash[1m]";
     CLAUDE_CODE_SUBAGENT_MODEL = "deepseek-flash[1m]";
     CLAUDE_CODE_EFFORT_LEVEL = "ultracode";
+
+    # QtWebEngine — qutebrowser's rendering engine — does not enable hardware
+    # video decode on its own, and software-decoding video is what actually
+    # drains a laptop battery while browsing. The Iris Xe VA-API driver comes
+    # from hardware.graphics.extraPackages in nixos/hardware.nix.
+    QTWEBENGINE_CHROMIUM_FLAGS = "--enable-features=VaapiVideoDecodeLinuxGL,VaapiVideoDecoder";
 
     # ANTHROPIC_AUTH_TOKEN is deliberately absent: home.sessionVariables are
     # evaluated at build time, so anything here lands in the world-readable

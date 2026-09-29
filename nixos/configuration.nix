@@ -153,6 +153,15 @@
     brightnessctl
     qt6Packages.qt6ct
 
+    # Browser. qutebrowser renders with QtWebEngine — Chromium's Blink/V8 — but
+    # ships only a minimal keyboard-driven shell on top, which makes it the
+    # lightest Chromium available in nixpkgs. It is also vim-keybound by
+    # default, matching the evil-mode workflow everywhere else here.
+    #
+    # Worth knowing: the engine is the bulk of the closure, so this is lighter
+    # at runtime, not on disk. Every Chromium variant is roughly the same size.
+    qutebrowser
+
     kdePackages.kate
     kdePackages.konsole
 
