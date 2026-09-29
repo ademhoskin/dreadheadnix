@@ -25,6 +25,12 @@
   # network.
   environment.etc."dreadheadnix".source = inputs.self.outPath;
 
+  # The live image does not enable the experimental CLI on its own. install.sh's
+  # pre-flight `nix eval` needs nix-command, and `nixos-install --flake` needs
+  # flakes; without this the very first check fails with
+  # "experimental Nix feature 'nix-command' is disabled".
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
   # disko's CLI refuses to run when its version differs from the one the flake
   # locked, so take it from the flake input rather than from pkgs.
   environment.systemPackages = [

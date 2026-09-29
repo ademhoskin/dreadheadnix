@@ -134,12 +134,17 @@ start_qemu() {
 
 stop_qemu() {
   if [[ -f "$QEMU_PID" ]]; then
-    kill "$(cat "$QEMU_PID")" 2>/dev/null || true
+    # QEMU removes its own pidfile on clean exit, so re-read it each pass rather
+    # than assuming it survives — otherwise the loop prints
+    # "cat: ... No such file or directory" on the way out.
+    local pid
+    pid="$(cat "$QEMU_PID" 2>/dev/null || true)"
+    [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
     for _ in $(seq 1 30); do
-      kill -0 "$(cat "$QEMU_PID")" 2>/dev/null || break
+      kill -0 "$pid" 2>/dev/null || break
       sleep 1
     done
-    kill -9 "$(cat "$QEMU_PID")" 2>/dev/null || true
+    [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null || true
     rm -f "$QEMU_PID"
   fi
 }

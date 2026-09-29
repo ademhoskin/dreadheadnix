@@ -42,7 +42,11 @@ $(lsblk -dpno NAME,SIZE,MODEL)"
 # github: URLs, so this also proves the network is up — and it is much better to
 # discover a broken config or a dead network now than after the disk is wiped.
 log "Evaluating $FLAKE_ATTR (this fetches the flake's inputs)..."
-nix eval --raw "${REPO}#nixosConfigurations.${HOST}.config.system.build.toplevel.drvPath" >/dev/null \
+# The flag is passed explicitly rather than relying on the ISO's nix.conf, so
+# this also works if someone runs the script from a stock NixOS ISO with a
+# cloned copy of the repo (which the REPO check above suggests).
+nix eval --extra-experimental-features 'nix-command flakes' --raw \
+  "${REPO}#nixosConfigurations.${HOST}.config.system.build.toplevel.drvPath" >/dev/null \
   || die "$FLAKE_ATTR failed to evaluate. Fix that before wiping the disk."
 
 # --- Confirm the destructive step --------------------------------------------
