@@ -125,3 +125,39 @@ jobs:
           path: ${{ runner.temp }}/rehearsal/
           if-no-files-found: ignore
           retention-days: 7
+
+  publish:
+    runs-on: ubuntu-latest
+    # Deliberately gated on the rehearsal. This is what makes the download URL
+    # trustworthy: an ISO that cannot install is never published, so whatever
+    # scripts/flash-usb.sh fetches has already been installed successfully in a
+    # VM at least once.
+    needs: install-test
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dreadheadnix-iso
+          path: iso
+
+      - name: Normalise the filename and checksum it
+        # The build artifact carries a versioned name; a release asset needs a
+        # stable one so the /releases/latest/download/ URL never changes.
+        run: |
+          cd iso
+          mv ./*.iso dreadheadnix.iso
+          sha256sum dreadheadnix.iso > dreadheadnix.iso.sha256
+          ls -lh
+
+      - name: Publish to the latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view latest >/dev/null 2>&1 \
+            || gh release create latest \
+                 --title "Latest installer ISO" \
+                 --notes "Installer ISO built and rehearsed by CI. Published only after the install rehearsal passed."
+          gh release upload latest --clobber iso/dreadheadnix.iso iso/dreadheadnix.iso.sha256
+          gh release edit latest --latest
+          echo "https://github.com/${{ github.repository }}/releases/latest/download/dreadheadnix.iso"

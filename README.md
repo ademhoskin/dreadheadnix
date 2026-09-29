@@ -6,20 +6,28 @@ Flake + home-manager + disko. Hyprland as the desktop. Doom Emacs for editing. T
 
 ## Install
 
-### 1. Get the ISO
-
-The ISO is built in CI, not locally. Push to `main`, then grab it from the run:
-
-- **Actions** → the `iso` workflow → **Artifacts** → `dreadheadnix-iso`
-- Or trigger it by hand: **Actions → iso → Run workflow**
-
-Building locally works too, if you have Nix: `nix build .#nixosConfigurations.installer.config.system.build.isoImage`
-
-### 2. Write it to a USB
+### 1. Flash a USB
 
 ```sh
+./scripts/flash-usb.sh
+```
+
+This downloads the newest ISO, verifies its published checksum, lists removable disks, refuses to touch the disk holding `/`, and makes you type the device path back before writing.
+
+The ISO it fetches **has already been installed successfully in a VM**. CI publishes a release only after the install rehearsal passes, so the download URL never serves an image that cannot install:
+
+```
+https://github.com/ademhoskin/dreadheadnix/releases/latest/download/dreadheadnix.iso
+```
+
+Use `-i ./local.iso` for a locally built image, or `-d /dev/sdX` to skip discovery. To do it by hand instead:
+
+```sh
+curl -fLO https://github.com/ademhoskin/dreadheadnix/releases/latest/download/dreadheadnix.iso
 sudo dd if=dreadheadnix.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
+
+Building locally works too, if you have Nix: `nix build .#nixosConfigurations.installer.config.system.build.isoImage`
 
 ### 3. Boot the laptop from it and install
 
@@ -80,6 +88,7 @@ A green `build-iso` means "this should install". A green `install-test` means "t
 | `nixos/installer.nix` | The custom ISO: bakes the repo in at `/etc/dreadheadnix` |
 | `home-manager/home.nix` | Shell, git, zsh/p10k, Doom Emacs, dev toolchain |
 | `install.sh` | Runs on the ISO: disko, then `nixos-install` |
+| `scripts/flash-usb.sh` | Downloads the published ISO, verifies it, writes it to a USB |
 | `dotfiles/` | Hyprland, alacritty, kitty, tmux, nvim, Doom, p10k, wallpaper |
 | `.github/workflows/iso.yml` | Builds and uploads the ISO |
 
