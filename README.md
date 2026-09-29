@@ -102,14 +102,43 @@ This repo is **public**. Nothing secret goes in it.
 
 ## After install
 
-Things worth verifying on real hardware, because CI can prove the config evaluates but not that the hardware works:
+### 1. Required, not optional: sync Doom
+
+Doom is cloned into `~/.config/emacs` but has no packages until this runs. Skip it and you have no working editor.
 
 ```sh
-lspci -k | grep -A3 -i network    # AX211 / iwlwifi
-aplay -l                          # speakers — Intel SOF
-libinput list-devices | grep -i touch
-hyprctl version                   # and check the windowrule comment in hyprland.conf
+~/.config/emacs/bin/doom sync
 ```
+
+### 2. Update to the current repo state
+
+```sh
+sudo nixos-rebuild switch --flake /etc/dreadheadnix#inspiron
+```
+
+### 3. Verify the hardware
+
+CI proves the config evaluates. It cannot prove any of this, because it has no Dell:
+
+```sh
+lspci -k | grep -A3 -i network   # Wi-Fi: expect AX211 with iwlwifi in use
+aplay -l                         # audio: expect a SOF device, not "no soundcards"
+bluetoothctl show                # expect a controller, not "No default controller"
+hyprctl devices                  # touchscreen: expect a touch entry
+pgrep -a iio-hyprland            # rotation listener is running
+systemctl suspend                # suspend: should resume on the power button
+sudo fwupdmgr get-devices        # firmware: devices listed for capsule updates
+```
+
+Then fold the lid back and check the screen rotates, and press `Super+Escape` for the on-screen keyboard.
+
+If rotation comes out **inverted**, the accelerometer is in the base rather than the display. Change the `exec-once = iio-hyprland` line in `dotfiles/hypr/hyprland.conf` to:
+
+```
+exec-once = iio-hyprland --transform 3,0,1,2
+```
+
+Webcam is the one item with no reliable way to check from here — try any video app.
 
 ## Known gaps
 
