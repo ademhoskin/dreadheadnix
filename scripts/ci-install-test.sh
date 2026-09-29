@@ -24,6 +24,15 @@ DISK_SIZE="${DISK_SIZE:-20G}"
 # the same /dev/nvme0n1 the laptop has. That keeps the rehearsal on the same
 # device path as the real thing instead of a vda stand-in.
 VM_DISK="/dev/nvme0n1"
+
+# Which flake attribute install.sh installs. This is the CI-only variant of the
+# laptop config, which differs from `inspiron` only in SSH policy — see the
+# nixosConfigurations block in flake.nix.
+HOST_ATTR="inspironTest"
+
+# Where the ISO bakes the repo in, and therefore where install.sh lives once the
+# live image is up.
+REPO_DIR="/etc/dreadheadnix"
 PW="ci-rehearsal"
 BOOT_TIMEOUT="${BOOT_TIMEOUT:-600}"     # seconds to reach a shell in the live ISO
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-2700}"  # seconds for nixos-install
@@ -144,11 +153,11 @@ if ! wait_for_ssh "$BOOT_TIMEOUT" "live ISO"; then
   die "the live ISO never came up on SSH within ${BOOT_TIMEOUT}s"
 fi
 
-log "running install.sh ($FLAKE_ATTR, disk $VM_DISK)"
+log "running install.sh (${REPO_DIR}#${HOST_ATTR}, disk $VM_DISK)"
 # install.sh reads three lines from stdin: the disk-path confirmation, then the
 # password twice. It is not TTY-gated, so piping satisfies it.
 set +e
-ssh_vm "printf '%s\n%s\n%s\n' '$VM_DISK' '$PW' '$PW' | HOST=inspironTest DISK=$VM_DISK /etc/dreadheadnix/install.sh"
+ssh_vm "printf '%s\n%s\n%s\n' '$VM_DISK' '$PW' '$PW' | HOST=$HOST_ATTR DISK=$VM_DISK ${REPO_DIR}/install.sh"
 install_rc=$?
 set -e
 
