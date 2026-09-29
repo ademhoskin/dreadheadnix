@@ -20,8 +20,10 @@ mkdir -p "$WORK"
 PORT="${SSH_PORT:-2222}"
 MEM="${MEM:-4096}"
 DISK_SIZE="${DISK_SIZE:-20G}"
-# The device name inside the VM. virtio-blk, so vda — not the laptop's nvme0n1.
-VM_DISK="/dev/vda"
+# The disk is attached as a QEMU NVMe device, not virtio-blk, so the guest sees
+# the same /dev/nvme0n1 the laptop has. That keeps the rehearsal on the same
+# device path as the real thing instead of a vda stand-in.
+VM_DISK="/dev/nvme0n1"
 PW="ci-rehearsal"
 BOOT_TIMEOUT="${BOOT_TIMEOUT:-600}"     # seconds to reach a shell in the live ISO
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-2700}"  # seconds for nixos-install
@@ -102,7 +104,8 @@ start_qemu() {
     -enable-kvm -m "$MEM" -smp 2 -cpu host
     -drive "if=pflash,format=raw,readonly=on,file=$OVMF_CODE"
     -drive "if=pflash,format=raw,file=$OVMF_VARS"
-    -drive "file=$DISK_IMG,format=qcow2,if=virtio,cache=unsafe"
+    -drive "file=$DISK_IMG,format=qcow2,if=none,id=nvme0,cache=unsafe"
+    -device "nvme,drive=nvme0,serial=dreadheadnix"
     -netdev "user,id=n0,hostfwd=tcp::${PORT}-:22"
     -device "virtio-net-pci,netdev=n0"
     -display none -monitor none

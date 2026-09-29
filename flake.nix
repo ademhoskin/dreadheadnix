@@ -71,11 +71,13 @@
 
       # CI-only variant of the laptop config, used for the rehearsal's second
       # boot, so it can confirm the installed system actually comes up. It
-      # differs from `inspiron` only in SSH policy and hostname; the disk
-      # layout, bootloader, services and home-manager config are identical.
+      # differs from `inspiron` only in SSH policy and hostname. The disk
+      # layout, device path, bootloader, services and home-manager config are
+      # identical — the rehearsal attaches its disk as NVMe precisely so this
+      # stays /dev/nvme0n1 rather than a virtio stand-in.
       nixosConfigurations.inspironTest = nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit inputs; disk = "/dev/vda"; };
+        specialArgs = { inherit inputs; disk = "/dev/nvme0n1"; };
         modules = [
           disko.nixosModules.disko
           ./nixos/configuration.nix

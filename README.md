@@ -54,7 +54,7 @@ disko is whole-disk destructive and there is no undo, so test the flow in a VM b
 ./scripts/qemu-run.sh --cdrom ./dreadheadnix.iso --disk ./test.qcow2 --ram 8192
 ```
 
-Then run `install.sh` inside the VM against `/dev/vda` (not `/dev/nvme0n1`).
+Then run `install.sh` inside the VM against `/dev/vda`, not `/dev/nvme0n1` — `qemu-run.sh` attaches disks as virtio-blk, so the guest sees `vda` where the laptop has `nvme0n1`. (The CI rehearsal attaches its disk as NVMe instead, so there it is `/dev/nvme0n1` and matches the laptop exactly.)
 
 ## What CI actually checks
 
