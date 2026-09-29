@@ -8,6 +8,7 @@
 
 let
   dotfiles = ../dotfiles;
+  claude = ../claude;
 in {
   home.stateVersion = "26.05";
 
@@ -82,6 +83,16 @@ in {
 
       export CC=clang
       export CXX=clang++
+
+      # Claude Code credential. It cannot live in home.sessionVariables (those
+      # are baked into the world-readable store at build time) and this repo is
+      # public, so it is read from an untracked file at shell start instead.
+      # After install:
+      #   install -Dm600 /dev/null ~/.config/claude/env
+      #   printf 'export ANTHROPIC_AUTH_TOKEN=%s\n' '<token>' > ~/.config/claude/env
+      if [[ -r ~/.config/claude/env ]]; then
+        source ~/.config/claude/env
+      fi
     '';
   };
 
@@ -99,16 +110,20 @@ in {
     EDITOR = "nvim";
     VISUAL = "nvim";
 
-    # Claude Code routed at DeepSeek's Anthropic-compatible endpoint.
+    # Claude Code routed at DeepSeek's Anthropic-compatible endpoint. Keep the
+    # [1m] suffix: it selects the 1M-token-context variant, and dropping it
+    # silently falls back to the smaller model.
     ANTHROPIC_BASE_URL = "https://api.deepseek.com/anthropic";
-    ANTHROPIC_MODEL = "deepseek-flash";
-    ANTHROPIC_DEFAULT_OPUS_MODEL = "deepseek-flash";
-    ANTHROPIC_DEFAULT_SONNET_MODEL = "deepseek-flash";
-    ANTHROPIC_DEFAULT_HAIKU_MODEL = "deepseek-flash";
-    CLAUDE_CODE_SUBAGENT_MODEL = "deepseek-flash";
+    ANTHROPIC_DEFAULT_OPUS_MODEL = "deepseek-flash[1m]";
+    ANTHROPIC_DEFAULT_SONNET_MODEL = "deepseek-flash[1m]";
+    ANTHROPIC_DEFAULT_HAIKU_MODEL = "deepseek-flash[1m]";
+    CLAUDE_CODE_SUBAGENT_MODEL = "deepseek-flash[1m]";
     CLAUDE_CODE_EFFORT_LEVEL = "ultracode";
-    # ANTHROPIC_API_KEY is a secret and is deliberately not here. Set it in a
-    # file this repo does not track; see the README.
+
+    # ANTHROPIC_AUTH_TOKEN is deliberately absent: home.sessionVariables are
+    # evaluated at build time, so anything here lands in the world-readable
+    # store. The shell exports it from ~/.config/claude/env instead — see the
+    # sourcing block in zsh.initExtra below.
   };
 
   # --- Config from this repo ---
@@ -138,6 +153,16 @@ in {
     ".config/doom/init.el".source = "${dotfiles}/doom/init.el";
     ".config/doom/packages.el".source = "${dotfiles}/doom/packages.el";
     ".config/doom/config.el".source = "${dotfiles}/doom/config.el";
+
+    # Claude Code user config. These two files are symlinked individually, NOT
+    # the directory: ~/.claude stays a real writable path because Claude Code
+    # writes history, sessions, caches and file-history into it.
+    #
+    # To add subagents or slash commands, drop them in claude/agents/ or
+    # claude/commands/ here and add a matching entry — they are picked up by
+    # filename.
+    ".claude/CLAUDE.md".source = "${claude}/CLAUDE.md";
+    ".claude/settings.json".source = "${claude}/settings.json";
   };
 
   # Doom itself cannot be a store symlink the way the other dotfiles are:
@@ -181,6 +206,10 @@ in {
     libtool
     libvterm
     texinfo
+
+    # Claude Code, from nixpkgs rather than npm. Unfree — it ships a prebuilt
+    # binary — so it rides on nixpkgs.config.allowUnfree in the system config.
+    claude-code
     # git tooling
     git-delta
     lazygit

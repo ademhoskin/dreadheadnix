@@ -105,12 +105,36 @@ If the `:term vterm` module fails to compile, either run `doom sync` again once 
 - **On-screen keyboard**: `Super+Escape` toggles `wvkbd`. It is not automatic — that needs `zwp_input_method_v2`, which Hyprland does not implement.
 - Disabling the physical keyboard when the lid is folded back is not configured. That needs udev/libinput plumbing on the hinge sensor.
 
+## Claude Code
+
+Installed from nixpkgs as `claude-code` — not via npm — and preconfigured for DeepSeek's Anthropic-compatible endpoint. The only thing you supply after install is the token.
+
+User config lives in `claude/` and is symlinked into `~/.claude/`:
+
+| Path | Purpose |
+| --- | --- |
+| `claude/CLAUDE.md` | Global rules: code style, commenting, doc-comment conventions, commit format. Applies to every project, not just this repo. |
+| `claude/settings.json` | Claude Code settings |
+
+`~/.claude` itself is **not** symlinked — it stays a real writable directory, because Claude Code writes history, sessions and caches into it.
+
+To add subagents or slash commands, drop `.md` files into `claude/agents/` or `claude/commands/` and add a matching `home.file` entry; they are picked up by filename.
+
 ## Secrets
 
 This repo is **public**. Nothing secret goes in it.
 
 - The account password is hashed at install time by `install.sh` and written to `/var/lib/nixos-secrets/passwd` on the target. `nixos/configuration.nix` points at it via `hashedPasswordFile`.
-- `ANTHROPIC_API_KEY` is read from the environment, never committed. Put it in a file the repo does not track.
+- The Claude token is read at shell start from `~/.config/claude/env`, which the repo does not track. Create it once:
+
+  ```sh
+  install -Dm600 /dev/null ~/.config/claude/env
+  printf 'export ANTHROPIC_AUTH_TOKEN=%s\n' '<token>' > ~/.config/claude/env
+  ```
+
+  Note the variable name: **`ANTHROPIC_AUTH_TOKEN`**, not `ANTHROPIC_API_KEY`. DeepSeek's endpoint takes the former, and setting the wrong one produces an auth failure that looks like a bad key.
+
+  It cannot go in `home.sessionVariables`: those are evaluated at build time and land in the world-readable Nix store.
 
 ## After install
 
@@ -122,13 +146,24 @@ Doom is cloned into `~/.config/emacs` but has no packages until this runs. Skip 
 ~/.config/emacs/bin/doom sync
 ```
 
-### 2. Update to the current repo state
+### 2. Required: add the Claude token
+
+Claude Code is installed and pointed at DeepSeek, but has no credential — it lives outside the repo because this repo is public.
+
+```sh
+install -Dm600 /dev/null ~/.config/claude/env
+printf 'export ANTHROPIC_AUTH_TOKEN=%s\n' '<token>' > ~/.config/claude/env
+```
+
+Open a new shell and `claude` should start. See [Claude Code](#claude-code) below.
+
+### 3. Update to the current repo state
 
 ```sh
 sudo nixos-rebuild switch --flake /etc/dreadheadnix#inspiron
 ```
 
-### 3. Verify the hardware
+### 4. Verify the hardware
 
 CI proves the config evaluates. It cannot prove any of this, because it has no Dell:
 

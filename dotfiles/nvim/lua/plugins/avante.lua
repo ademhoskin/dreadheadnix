@@ -7,7 +7,12 @@ return {
     providers = {
       deepseek = {
         __inherited_from = "openai",
-        api_key_name = "ANTHROPIC_API_KEY",
+        -- DeepSeek's native API, not the Anthropic-compatible one, so this
+        -- reads DEEPSEEK_API_KEY. It previously named ANTHROPIC_API_KEY, which
+        -- nothing in the environment sets — the shell exports
+        -- ANTHROPIC_AUTH_TOKEN and DEEPSEEK_API_KEY — so avante could never
+        -- authenticate.
+        api_key_name = "DEEPSEEK_API_KEY",
         endpoint = "https://api.deepseek.com",
         model = "deepseek-v4-pro",
         max_tokens = 8192,
