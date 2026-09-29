@@ -32,8 +32,9 @@
 
        :ui
        doom
-       doom-dashboard
-       hl-line
+       dashboard
+       ;; no hl-line module exists; config.el enables global-hl-line-mode
+       ;; directly, which is the same effect.
        indent-guides
        modeline
        ophints
@@ -62,10 +63,10 @@
        vterm
 
        :checkers
-       syntax-checker
+       syntax
 
        :tools
-       aws
+       ;; no tools/aws module exists; use awscli2 from home.packages instead
        debugger
        direnv
        docker
@@ -80,8 +81,10 @@
        tty
 
        :lang
+       ;; no lang/cmake and no lang/sql module exists. CMake files are handled
+       ;; by lang/cc, and sql.el ships with Emacs itself, so both still work —
+       ;; they just are not modules you can enable.
        cc
-       cmake
        data
        emacs-lisp
        go
@@ -95,7 +98,6 @@
        python
        rust
        sh
-       sql
        (web +lsp)
        yaml
        zig

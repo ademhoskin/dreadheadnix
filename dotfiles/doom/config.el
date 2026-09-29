@@ -51,7 +51,11 @@
 
 ;; --- Misc from the Spacemacs user-config ---
 (setq org-src-fontify-natively t)
+
+;; Setting whitespace-style alone does nothing — nothing enables whitespace-mode
+;; or reads these variables unless it is on, so this pair has to stay together.
 (setq whitespace-style '(face trailing tabs))
+(global-whitespace-mode +1)
 (global-display-line-numbers-mode t)
 (global-hl-line-mode t)
 

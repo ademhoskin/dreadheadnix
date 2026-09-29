@@ -21,14 +21,16 @@ require("lazy").setup({
     -- language server, formatter, and debugger extras for the toolchain in this setup
     { import = "lazyvim.plugins.extras.dap.core" },
     { import = "lazyvim.plugins.extras.formatting.prettier" },
-    { import = "lazyvim.plugins.extras.lang.bash" },
-    { import = "lazyvim.plugins.extras.lang.c" },
+    -- clangd, not c: there is no extras/lang/c.
+    { import = "lazyvim.plugins.extras.lang.clangd" },
     { import = "lazyvim.plugins.extras.lang.docker" },
     { import = "lazyvim.plugins.extras.lang.go" },
     { import = "lazyvim.plugins.extras.lang.java" },
-    { import = "lazyvim.plugins.extras.lang.javascript" },
+    -- typescript, not javascript: LazyVim ships one TS/JS extra and it is
+    -- named after its directory, extras/lang/typescript/.
+    { import = "lazyvim.plugins.extras.lang.typescript" },
     { import = "lazyvim.plugins.extras.lang.json" },
-    { import = "lazyvim.plugins.extras.lang.lua" },
+    -- No bash or lua extra exists; LazyVim core already covers sh and lua.
     { import = "lazyvim.plugins.extras.lang.markdown" },
     { import = "lazyvim.plugins.extras.lang.nix" },
     { import = "lazyvim.plugins.extras.lang.ocaml" },

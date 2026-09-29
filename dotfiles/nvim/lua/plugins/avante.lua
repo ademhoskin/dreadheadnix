@@ -15,7 +15,10 @@ return {
         api_key_name = "DEEPSEEK_API_KEY",
         endpoint = "https://api.deepseek.com",
         model = "deepseek-v4-pro",
-        max_tokens = 8192,
+        -- max_tokens is a top-level key avante silently ignores: only
+        -- `request_body` reaches the wire, everything else lands in
+        -- provider_opts. It has to go inside extra_request_body to take effect.
+        extra_request_body = { max_tokens = 8192 },
       },
     },
     behaviour = {
