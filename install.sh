@@ -10,7 +10,10 @@
 set -euo pipefail
 
 REPO="${REPO:-/etc/dreadheadnix}"
-FLAKE_ATTR="${REPO}#inspiron"
+# The rehearsal overrides HOST so it can install a CI-only variant of the same
+# config. Everything below the flake attribute is identical either way.
+HOST="${HOST:-inspiron}"
+FLAKE_ATTR="${REPO}#${HOST}"
 DISK="${DISK:-/dev/nvme0n1}"
 MOUNT="${MOUNT:-/mnt}"
 SECRET_DIR="${MOUNT}/var/lib/nixos-secrets"
@@ -73,7 +76,11 @@ unset pw1 pw2
 # --- Partition, format, mount ------------------------------------------------
 
 log "Partitioning $DISK with disko..."
-disko --mode destroy,format,mount "$REPO/nixos/disko.nix" --arg disk "$DISK" --yes-wipe-all-disks
+# --argstr, not --arg: nix-build would read a bare /dev/vda as a path, and
+# disko's `device` wants a string. The option type is (str), so --arg silently
+# produces a path attr instead.
+disko --mode destroy,format,mount "$REPO/nixos/disko.nix" \
+  --argstr disk "$DISK" --yes-wipe-all-disks
 
 # disko mounts the installed system by partition *label* (via
 # /dev/disk/by-partlabel), so a label that failed to appear means an unbootable

@@ -39,6 +39,57 @@
         ];
       };
 
+      # CI-only variant of the installer, used by the install rehearsal job.
+      #
+      # It differs from `installer` in one respect. installation-device.nix
+      # leaves root with an empty password, which sshd refuses, so this gives
+      # root a throwaway one — and that is what lets the rehearsal drive
+      # install.sh over SSH instead of scraping the serial console. The real
+      # `installer` keeps root passwordless and sshd refusing empty passwords.
+      #
+      # Everything under test — the disk layout, install.sh, nixos-install, the
+      # bootloader — is identical between the two. This ISO is uploaded only as
+      # a short-lived rehearsal artifact, never as the thing you flash.
+      nixosConfigurations.installerTest = nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit inputs; };
+        modules = [
+          "${nixpkgs}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+          ./nixos/installer.nix
+          ({ lib, ... }: {
+            # installation-device.nix gives root an empty password, which sshd
+            # refuses. Give it a real one for the rehearsal instead of enabling
+            # PermitEmptyPasswords — a throwaway password on a CI-only image is
+            # the smaller concession.
+            users.users.root = {
+              initialHashedPassword = lib.mkForce null;
+              initialPassword = "ci-rehearsal";
+            };
+          })
+        ];
+      };
+
+      # CI-only variant of the laptop config, used for the rehearsal's second
+      # boot, so it can confirm the installed system actually comes up. It
+      # differs from `inspiron` only in SSH policy and hostname; the disk
+      # layout, bootloader, services and home-manager config are identical.
+      nixosConfigurations.inspironTest = nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit inputs; disk = "/dev/vda"; };
+        modules = [
+          disko.nixosModules.disko
+          ./nixos/configuration.nix
+          ({ lib, ... }: {
+            networking.hostName = "dreadheadnix-test";
+            services.openssh.settings = {
+              PasswordAuthentication = lib.mkForce true;
+              PermitRootLogin = lib.mkForce "yes";
+            };
+            users.users.root.initialPassword = "ci-rehearsal";
+          })
+        ];
+      };
+
       # The custom installer ISO, with this repo baked in at /etc/dreadheadnix.
       # Built by .github/workflows/iso.yml, not locally.
       #

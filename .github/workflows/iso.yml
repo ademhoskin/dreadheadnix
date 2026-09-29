@@ -1,11 +1,13 @@
 name: iso
 
-# Builds the installer ISO. This is also the only thing that evaluates the
-# NixOS config end to end — there is no Nix on the machine this repo is
-# developed on, so CI is where a bad option name or a broken import surfaces.
+# Builds the installer ISO, then rehearses the install end to end in a VM.
+#
+# This is also the only thing that evaluates the NixOS config — there is no Nix
+# on the machine this repo is developed on, so CI is where a bad option name or
+# a broken import surfaces.
 #
 # We deliberately do NOT run `nix flake check`: it evaluates every output,
-# including the ISO, which duplicates this job and takes roughly as long.
+# including the ISOs, duplicating these jobs at roughly the same cost.
 
 on:
   push:
@@ -16,17 +18,17 @@ on:
       - 'nixos/**'
       - 'home-manager/**'
       - 'dotfiles/**'
+      - 'install.sh'
+      - 'scripts/**'
       - '.github/workflows/iso.yml'
   workflow_dispatch:
 
 jobs:
   build-iso:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Free disk space
-        # A NixOS ISO build plus its closure does not fit in the default
+        # Two NixOS ISO builds plus their closures do not fit in the default
         # runner's free space alongside the preinstalled toolchains.
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
@@ -41,13 +43,21 @@ jobs:
             experimental-features = nix-command flakes
             max-jobs = auto
 
-      - name: Build ISO
+      - name: Build installer ISO
         run: nix build .#nixosConfigurations.installer.config.system.build.isoImage -L
 
-      - name: Report size
-        run: ls -lh result/iso/
+      - name: Build rehearsal ISO
+        # Credential policy differs from `installer`, so the rehearsal can reach
+        # it over SSH. The closure is almost entirely shared with the build
+        # above, which is why this second build is cheap.
+        run: |
+          nix build .#nixosConfigurations.installerTest.config.system.build.isoImage \
+            -L --out-link result-test
 
-      - name: Upload ISO
+      - name: Report sizes
+        run: ls -lh result/iso/ result-test/iso/
+
+      - name: Upload installer ISO
         uses: actions/upload-artifact@v4
         with:
           name: dreadheadnix-iso
@@ -55,3 +65,50 @@ jobs:
           # The ISO is already compressed; re-compressing it wastes minutes.
           compression-level: 0
           retention-days: 14
+
+      - name: Upload rehearsal ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: dreadheadnix-iso-rehearsal
+          path: result-test/iso/*.iso
+          compression-level: 0
+          retention-days: 3
+
+  install-test:
+    runs-on: ubuntu-latest
+    needs: build-iso
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dreadheadnix-iso-rehearsal
+          path: iso
+
+      - name: Install QEMU, OVMF and sshpass
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 ovmf sshpass
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      - name: Rehearse the install
+        run: |
+          chmod +x scripts/ci-install-test.sh
+          ./scripts/ci-install-test.sh iso/*.iso "$RUNNER_TEMP/rehearsal"
+
+      - name: Upload serial logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rehearsal-logs
+          path: ${{ runner.temp }}/rehearsal/
+          if-no-files-found: ignore
+          retention-days: 7

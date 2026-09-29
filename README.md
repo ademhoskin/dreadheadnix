@@ -56,6 +56,18 @@ disko is whole-disk destructive and there is no undo, so test the flow in a VM b
 
 Then run `install.sh` inside the VM against `/dev/vda` (not `/dev/nvme0n1`).
 
+## What CI actually checks
+
+Two jobs, and they check very different things.
+
+**`build-iso`** evaluates the whole configuration and builds the ISO. This is where a wrong option name or a broken module import fails — worth having, because there is no Nix on the development machine, so nothing else evaluates it.
+
+**`install-test`** is the one that matters for safety. It boots the ISO under UEFI in QEMU against a blank disk, runs `install.sh` for real, then reboots into the installed system and asserts it came up. It is the only thing that ever executes `install.sh`, which is otherwise the most dangerous file here with zero coverage.
+
+It uses two CI-only flake outputs, `installerTest` and `inspironTest`, which differ from the real ones *only* in SSH policy — that is how the job gets a shell to drive the install with. The disk layout, `install.sh`, `nixos-install` and the bootloader are identical, so the rehearsal exercises the same code path you will.
+
+A green `build-iso` means "this should install". A green `install-test` means "this does install". Neither says anything about the hardware — only the laptop can tell you that.
+
 ## Repo layout
 
 | Path | Purpose |
