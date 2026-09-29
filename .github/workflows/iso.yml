@@ -54,6 +54,19 @@ jobs:
           nix build .#nixosConfigurations.installerTest.config.system.build.isoImage \
             -L --out-link result-test
 
+      - name: Evaluate the laptop configurations
+        # Building the ISOs never forces these outputs: neither
+        # installation-cd-minimal.nix nor installer.nix imports
+        # ./nixos/configuration.nix, and flake outputs are evaluated lazily. So
+        # without this step the actual laptop config — hardware, tablet, disko,
+        # home-manager — would go unevaluated until the rehearsal was already
+        # midway through nixos-install.
+        #
+        # drvPath forces full evaluation without building anything.
+        run: |
+          nix eval --raw .#nixosConfigurations.inspiron.config.system.build.toplevel.drvPath > /dev/null
+          nix eval --raw .#nixosConfigurations.inspironTest.config.system.build.toplevel.drvPath > /dev/null
+
       - name: Report sizes
         run: ls -lh result/iso/ result-test/iso/
 
