@@ -43,6 +43,20 @@ jobs:
             experimental-features = nix-command flakes
             max-jobs = auto
 
+      - name: Evaluate the laptop configurations
+        # Deliberately FIRST, before any ISO build. Evaluation catches wrong
+        # option names and dead package attributes in about a minute; building
+        # the ISOs takes ten. Runs #3, #6 and #7 each burned a full build before
+        # reporting an eval error that this ordering surfaces immediately.
+        #
+        # Building the ISOs never forces these outputs: neither
+        # installation-cd-minimal.nix nor installer.nix imports
+        # ./nixos/configuration.nix, and flake outputs are evaluated lazily.
+        # drvPath forces full evaluation without building anything.
+        run: |
+          nix eval --raw .#nixosConfigurations.inspiron.config.system.build.toplevel.drvPath > /dev/null
+          nix eval --raw .#nixosConfigurations.inspironTest.config.system.build.toplevel.drvPath > /dev/null
+
       - name: Build installer ISO
         run: nix build .#nixosConfigurations.installer.config.system.build.isoImage -L
 
@@ -53,19 +67,6 @@ jobs:
         run: |
           nix build .#nixosConfigurations.installerTest.config.system.build.isoImage \
             -L --out-link result-test
-
-      - name: Evaluate the laptop configurations
-        # Building the ISOs never forces these outputs: neither
-        # installation-cd-minimal.nix nor installer.nix imports
-        # ./nixos/configuration.nix, and flake outputs are evaluated lazily. So
-        # without this step the actual laptop config — hardware, tablet, disko,
-        # home-manager — would go unevaluated until the rehearsal was already
-        # midway through nixos-install.
-        #
-        # drvPath forces full evaluation without building anything.
-        run: |
-          nix eval --raw .#nixosConfigurations.inspiron.config.system.build.toplevel.drvPath > /dev/null
-          nix eval --raw .#nixosConfigurations.inspironTest.config.system.build.toplevel.drvPath > /dev/null
 
       - name: Report sizes
         run: ls -lh result/iso/ result-test/iso/

@@ -41,6 +41,15 @@
   # reflect what it actually is.
   isoImage.edition = lib.mkForce "dreadheadnix";
 
+  # nixpkgs defaults to `zstd -Xcompression-level 19`, which is near-maximum and
+  # dominates the ISO build time in CI. Level 6 is the example the option's own
+  # docs give: a modestly larger image for a substantially faster squashfs pass.
+  #
+  # The ISO is compressed once per CI run but downloaded once per flash, so if
+  # download size ever matters more than build time, raise this; if CI time
+  # matters more, drop it to 3 or 1.
+  isoImage.squashfsCompression = "zstd -Xcompression-level 6";
+
   # The live environment is a rescue shell, not a machine to be preserved.
   services.openssh.settings.PermitRootLogin = lib.mkForce "yes";
 }
