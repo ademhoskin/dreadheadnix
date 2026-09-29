@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Install rehearsal: boot the installer ISO under UEFI in QEMU, run install.sh
-# against a blank virtio disk, then reboot into the installed system and confirm
+# against a blank NVMe disk, then reboot into the installed system and confirm
 # it comes up.
 #
 # This is the only thing in CI that actually executes install.sh. Everything
@@ -46,12 +46,9 @@ QEMU_PID="$WORK/qemu.pid"
 log() { printf '\033[1;36m[rehearsal]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[rehearsal] error:\033[0m %s\n' "$*" >&2; exit 1; }
 
-cleanup() {
-  if [[ -f "$QEMU_PID" ]]; then
-    kill "$(cat "$QEMU_PID")" 2>/dev/null || true
-    wait 2>/dev/null || true
-  fi
-}
+# Reuses stop_qemu rather than `kill` + `wait`: if QEMU ignored SIGTERM, a bare
+# `wait` would block here and hang the job past its own timeout.
+cleanup() { stop_qemu; }
 trap cleanup EXIT
 
 # --- Preflight ---------------------------------------------------------------
@@ -82,16 +79,19 @@ qemu-img create -f qcow2 "$DISK_IMG" "$DISK_SIZE" >/dev/null
 
 # --- Helpers -----------------------------------------------------------------
 
-ssh_vm() {
-  sshpass -p "$PW" ssh \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    -o LogLevel=ERROR \
-    -o ConnectTimeout=10 \
-    -o ServerAliveInterval=30 \
-    -o ServerAliveCountMax=120 \
-    -p "$PORT" root@127.0.0.1 "$@"
-}
+# Held as an array so the install step can wrap the same command in `timeout`,
+# which only works on a real command and not on a shell function.
+SSH_BASE=(
+  sshpass -p "$PW" ssh
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+  -o LogLevel=ERROR
+  -o ConnectTimeout=10
+  -o ServerAliveInterval=30
+  -o ServerAliveCountMax=10
+)
+
+ssh_vm() { "${SSH_BASE[@]}" -p "$PORT" root@127.0.0.1 "$@"; }
 
 wait_for_ssh() {
   local timeout="$1" label="$2" waited=0
@@ -156,10 +156,22 @@ fi
 log "running install.sh (${REPO_DIR}#${HOST_ATTR}, disk $VM_DISK)"
 # install.sh reads three lines from stdin: the disk-path confirmation, then the
 # password twice. It is not TTY-gated, so piping satisfies it.
+#
+# Bounded by INSTALL_TIMEOUT: nixos-install fetches and copies a full closure,
+# and a wedged fetch would otherwise run until the job's own timeout with no
+# indication of which step stalled.
+install_cmd="printf '%s\n%s\n%s\n' '$VM_DISK' '$PW' '$PW' | HOST=$HOST_ATTR DISK=$VM_DISK ${REPO_DIR}/install.sh"
 set +e
-ssh_vm "printf '%s\n%s\n%s\n' '$VM_DISK' '$PW' '$PW' | HOST=$HOST_ATTR DISK=$VM_DISK ${REPO_DIR}/install.sh"
+timeout --foreground "$INSTALL_TIMEOUT" \
+  "${SSH_BASE[@]}" -p "$PORT" root@127.0.0.1 "$install_cmd"
 install_rc=$?
 set -e
+
+if [[ $install_rc -eq 124 ]]; then
+  log "--- last 80 lines of serial output ---"
+  tail -n 80 "$LOG_INSTALL" || true
+  die "install.sh did not finish within ${INSTALL_TIMEOUT}s"
+fi
 
 if [[ $install_rc -ne 0 ]]; then
   log "install.sh exited $install_rc"
@@ -198,10 +210,19 @@ for check in "/boot:ESP" "/:root" "/nix:nix" "/home:home"; do
   log "  $mountpoint mounted ok ($label)"
 done
 
-# disko mounts by partlabel, so this is the check that would have caught a
-# missing label before it became an unbootable machine.
-ssh_vm "ls /dev/disk/by-partlabel/" | tee "$WORK/partlabels.txt"
-ssh_vm "grep -q 'disk-main-ESP' /proc/mounts" || die "root/ESP not mounted by partlabel"
+# disko's fileSystems entries point at /dev/disk/by-partlabel/..., so a label
+# that never materialised means an unbootable machine on the next reboot.
+#
+# This asserts the symlinks exist rather than grepping /proc/mounts for the
+# partlabel path: the kernel reports the resolved device there (nvme0n1p1), not
+# the by-partlabel path, so that grep would fail on a perfectly healthy system.
+log "partition labels:"
+ssh_vm "ls -l /dev/disk/by-partlabel/" | tee "$WORK/partlabels.txt"
+for label in disk-main-ESP disk-main-root; do
+  ssh_vm "test -e /dev/disk/by-partlabel/$label" \
+    || die "/dev/disk/by-partlabel/$label is missing"
+done
+log "  both partlabels present"
 
 log "rehearsal passed: install.sh wiped the disk, installed, and the system boots"
 

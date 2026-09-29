@@ -38,6 +38,13 @@ $(lsblk -dpno NAME,SIZE,MODEL)"
 
 [[ -d /sys/firmware/efi ]] || die "not booted in UEFI mode; this layout assumes UEFI."
 
+# Evaluate the target config before touching the disk. The flake's inputs are
+# github: URLs, so this also proves the network is up — and it is much better to
+# discover a broken config or a dead network now than after the disk is wiped.
+log "Evaluating $FLAKE_ATTR (this fetches the flake's inputs)..."
+nix eval --raw "${REPO}#nixosConfigurations.${HOST}.config.system.build.toplevel.drvPath" >/dev/null \
+  || die "$FLAKE_ATTR failed to evaluate. Fix that before wiping the disk."
+
 # --- Confirm the destructive step --------------------------------------------
 
 log "Target disk : $DISK"
@@ -123,7 +130,7 @@ log "  2. Add the Claude token (it is not in the repo — that repo is public):"
 log "       install -Dm600 /dev/null ~/.config/claude/env"
 log "       printf 'export ANTHROPIC_AUTH_TOKEN=%s\n' '<token>' > ~/.config/claude/env"
 log ""
-log "  3. sudo nixos-rebuild switch --flake /etc/dreadheadnix#inspiron"
+log "  3. sudo nixos-rebuild switch --flake ${REPO}#${HOST}"
 log ""
 log "  4. Check the hardware — CI validates the config, not the machine:"
 log "       lspci -k | grep -A3 -i network   # Wi-Fi"
