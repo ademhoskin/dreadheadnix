@@ -101,8 +101,16 @@ You will rarely need to memorise anything below; use it as a map of what exists.
 
 ## Code and LSP
 
-The language servers come from `home.packages` — see `docs/toolchain.md`. Doom
-finds them on `PATH`; there is no separate install step.
+**Servers are managed by nix, not by Emacs.** They come from `home.packages` in
+`home-manager/home.nix`, land on `PATH`, and Doom finds them there. There is no
+Mason, no runtime download, and nothing installs behind your back — which also
+means an editor cannot install a server for you. Adding one is a package edit
+and a rebuild.
+
+Watch out that **the package name and the binary name often differ** — Doom
+searches for the binary. `basedpyright` provides `basedpyright-langserver`,
+`ocaml-lsp` provides `ocamllsp`, `jdt-language-server` provides `jdtls`. The
+full table is in `docs/toolchain.md`.
 
 | Key | Does |
 | --- | --- |
@@ -232,8 +240,14 @@ To add a keybinding, use `map!` in `config.el`:
 **A feature from a module doesn't exist.** The module name is wrong. Doom
 skipped it silently. Check the name against `~/.config/emacs/modules/`.
 
-**A language server isn't starting.** Check it is on `PATH` (`command -v gopls`),
-then check the module is enabled, then `doom sync`.
+**A language server isn't starting.** In this order:
+
+1. Is the **binary** on `PATH`? `command -v gopls`, and for the renamed ones
+   `command -v basedpyright-langserver` / `ocamllsp` / `jdtls` — see the table in
+   `docs/toolchain.md`.
+2. Is the module enabled in `init.el` with `+lsp`?
+3. Has `doom sync` run since?
+4. `M-x lsp-workspace-restart`, or check `M-x lsp` output.
 
 **Everything is broken after a config change.** `doom sync` did not run, or it
 failed. Run it manually and read the output.

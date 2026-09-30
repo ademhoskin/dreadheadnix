@@ -194,6 +194,34 @@ Notes:
 - **`nodejs` provides `npm`** — there is no separate `npm` package.
 - Debuggers are DAP adapters. Doom drives them through `dape`; see
   `docs/doom.md`.
+
+### Package name ≠ binary name
+
+Editors search `PATH` for a **binary**, not a nixpkgs attribute. Most match, but
+these do not — and when one doesn't, the symptom is "the LSP doesn't work" with
+nothing in any log:
+
+| Package | Binary the editor looks for |
+| --- | --- |
+| `basedpyright` | `basedpyright-langserver` |
+| `ocamlPackages.ocaml-lsp` | `ocamllsp` |
+| `jdt-language-server` | `jdtls` |
+| `dockerfile-language-server` | `docker-langserver` |
+| `vscode-langservers-extracted` | `vscode-json-language-server`, `vscode-css-language-server`, `vscode-html-language-server`, `vscode-eslint-language-server` |
+| `ruff` | `ruff` (serve with `ruff server`) |
+
+Everything else in the table above installs a binary of the same name:
+`clangd`, `rust-analyzer`, `gopls`, `zls`, `typescript-language-server`,
+`vtsls`, `tailwindcss-language-server`, `lua-language-server`,
+`bash-language-server`, `yaml-language-server`, `marksman`, `sqls`, `nil`,
+`csharp-ls`.
+
+When adding a server, confirm the binary rather than the attribute:
+
+```sh
+command -v basedpyright-langserver
+nix-locate --top-level bin/basedpyright-langserver   # or check the package
+```
 - **`gotools` is what provides the `goimports` binary.** The attribute `goimports`
   does not exist.
 - **`python3Packages.debugpy`**, not `debugpy`.
