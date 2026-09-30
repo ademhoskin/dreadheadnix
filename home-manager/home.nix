@@ -62,6 +62,13 @@ in {
       tree = "eza --tree --icons";
       top = "btm";
       jq = "jq -C";
+
+      # cat keeps cat's output shape — no header, no line numbers, no pager —
+      # but adds highlighting. bat drops colour on its own when the output is
+      # not a terminal, so `cat f | grep x` still behaves.
+      cat = "bat --style=plain --paging=never";
+      # The paged, fully decorated version. This is the one for reading a file.
+      catp = "bat";
     };
 
     initContent = ''
@@ -97,6 +104,28 @@ in {
         rg --line-number --no-heading --color=always "$@" | \
           fzf --ansi --delimiter : --preview "bat --color=always --highlight-line {2} {1}" | \
           awk -F: '{print $1 " +" $2}' | xargs -r ''${EDITOR:-nvim}
+      }
+
+      # Open a file at the first section heading matching a fixed string, and
+      # highlight that line. Handy for long docs:
+      #   bs docs/toolchain.md Languages
+      #
+      # bat has no +N convention — `bat +3 f` tries to open a file called "+3".
+      # The line range (-r N:) is what actually starts the output at a line.
+      bs() {
+        if [ $# -lt 2 ]; then
+          print -u2 'usage: bs <file> <heading text>'
+          return 2
+        fi
+        local file=$1
+        shift
+        local line
+        line=$(grep -nE '^#+[[:space:]]' "$file" | grep -F -- "$*" | head -n1 | cut -d: -f1)
+        if [ -z "$line" ]; then
+          print -u2 "bs: no heading matching '$*' in $file"
+          return 1
+        fi
+        bat --highlight-line "$line" -r "$line:" "$file"
       }
 
       export CC=clang

@@ -44,13 +44,48 @@ variable to change.
 | --- | --- | --- |
 | **ripgrep** (`rg`) | Fast recursive grep | `frg`; Doom's search |
 | **fd** | Friendlier `find` | Nothing — standalone |
-| **bat** | `cat` with syntax highlighting | The fzf preview in `frg` |
+| **bat** | `cat` with syntax highlighting | `cat`/`catp` aliases, `bs`, the fzf preview in `frg` |
 | **eza** | Modern `ls` | `ls`, `ll`, `la`, `tree` aliases replace the originals |
 | **glow** | Markdown renderer in the terminal | Nothing — standalone |
 | **bottom** (`btm`) | `top` replacement | The `top` alias |
 
 Note the aliases are *replacements*: `ls` runs `eza`, and `tree` is
 `eza --tree`. The real binaries are still there if you need them.
+
+### Reading files with bat
+
+Two aliases, because the useful behaviour differs by intent:
+
+```sh
+cat file        # bat --style=plain --paging=never — looks like cat, but coloured
+catp file       # paged and fully decorated; use this to actually read something
+```
+
+`cat` is safe to keep aliased: bat drops colour on its own when stdout is not a
+terminal, so `cat f | grep x` behaves as expected.
+
+**Jumping to a section.** `bs` opens a file at the first heading matching a
+string and highlights that line:
+
+```sh
+bs docs/toolchain.md Languages
+bs README.md Install
+```
+
+It works by grepping for heading lines, then narrowing to a fixed-string match —
+so the search term is not treated as a regex.
+
+Worth knowing: **bat has no `+N` convention.** `bat +3 file` tries to open a
+file literally named `+3` and fails with "No such file or directory". The line
+range is what starts output at a line:
+
+```sh
+bat -r 40: file            # start at line 40
+bat -r 40:60 file          # lines 40 to 60
+bat -H 40 -r 40: file      # start at 40, with 40 highlighted
+```
+
+`-H` (`--highlight-line`) accepts the same `N:M` ranges as `-r`.
 
 ## Git
 
