@@ -1,23 +1,11 @@
 ;;; init.el -*- lexical-binding: t; -*-
 ;;
-;; Doom Emacs module list — this is the direct equivalent of the
-;; `dotspacemacs-configuration-layers` block in the old .spacemacs.
-;; Spacemacs "layers" and Doom "modules" are the same idea under two names.
+;; Doom Emacs module list. Each entry enables a language, a tool or a UI
+;; feature, and some take +flags (e.g. (web +lsp)).
 ;;
-;;   Spacemacs layer        ->  Doom module
-;;   helm                  ->  completion/vertico
-;;   auto-completion       ->  completion/company
-;;   treemacs              ->  ui/treemacs
-;;   themes-megapack       ->  ui/doom (doom-themes ships in core)
-;;   version-control       ->  ui/vc-gutter + tools/magit
-;;   lsp                   ->  tools/lsp
-;;   dap                   ->  tools/debugger
-;;   syntax-checking       ->  checkers/syntax-checker
-;;   prettier              ->  editor/format (apheleia)
-;;   bash                  ->  lang/sh
-;;   c-c++                 ->  lang/cc
-;;   css + html + tailwind ->  lang/web
-;;   d                     ->  (none — dropped in 1f99704)
+;; A name that does not resolve is skipped SILENTLY — no error, no warning, just
+;; a missing feature. Doom's warnings there are not to be trusted, so verify a
+;; module exists before adding it.
 ;;
 ;; After editing this file run:  ~/.config/emacs/bin/doom sync
 

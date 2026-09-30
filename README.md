@@ -94,9 +94,9 @@ A green `build-iso` means "this should install". A green `install-test` means "t
 
 ## Editors
 
-**Doom Emacs** is the default, with evil mode. It is a port of the Spacemacs setup that used to live here — `dotfiles/doom/` holds `init.el` (the module list, translated from the old `dotspacemacs-configuration-layers`), `config.el` (the settings from `dotspacemacs/user-config`), and `packages.el`.
+**Doom Emacs** is the default, with evil mode. `dotfiles/doom/` holds `init.el` (the module list), `config.el` (settings), and `packages.el` (extra packages).
 
-The old `dotfiles/.spacemacs` is still in the repo as a fallback; it is simply not installed.
+Note that Doom skips a module it cannot resolve without any error or warning — a typo in `init.el` costs you the feature and tells you nothing.
 
 Doom cannot live in the Nix store, because `doom sync` compiles packages into `~/.config/emacs/.local`. So `home-manager` clones Doom into `~/.config/emacs` on first activation and symlinks only the three config files. After changing `init.el` or `packages.el`:
 
