@@ -69,6 +69,16 @@ in {
       cat = "bat --style=plain --paging=never";
       # The paged, fully decorated version. This is the one for reading a file.
       catp = "bat";
+
+      # This repo. On the installed system it is baked into the ISO and lands at
+      # /etc/dreadheadnix; DREADHEADNIX overrides it for a dev checkout.
+      cfg = ''catp "$DREADHEADNIX/nixos/configuration.nix"'';
+      cfgh = ''catp "$DREADHEADNIX/home-manager/home.nix"'';
+      cfgt = ''catp "$DREADHEADNIX/docs/toolchain.md"'';
+      # Validate without switching: this builds the whole system, so a bad
+      # option name or broken import fails here rather than at the next rebuild.
+      # Pairs with `bs` — `cfg` then `bs` on a section.
+      cfgcheck = ''nixos-rebuild build --flake "$DREADHEADNIX#inspiron"'';
     };
 
     initContent = ''
@@ -127,6 +137,10 @@ in {
         fi
         bat --highlight-line "$line" -r "$line:" "$file"
       }
+
+      # Where the dreadheadnix repo lives. On the installed system it is baked
+      # into the ISO at this path; override it for a development checkout.
+      export DREADHEADNIX="''${DREADHEADNIX:-/etc/dreadheadnix}"
 
       export CC=clang
       export CXX=clang++

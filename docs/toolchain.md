@@ -34,6 +34,24 @@ frg <pattern>          # search, preview with bat, open the hit in $EDITOR
 **Custom key bindings:** `Ctrl-P`/`Ctrl-N` for history-search, `Ctrl-F` to
 accept an autosuggestion.
 
+**`DREADHEADNIX` points at this repo.** It defaults to `/etc/dreadheadnix`,
+where the ISO bakes it in on the installed system; export it yourself for a
+development checkout.
+
+```sh
+cfg         # page nixos/configuration.nix
+cfgh        # page home-manager/home.nix
+cfgt        # page this file
+cfgcheck    # build the config without switching to it
+```
+
+`cfgcheck` is the one worth knowing: `nixos-rebuild build` builds the whole
+system and writes a `result` symlink, so a bad option name or broken import
+fails immediately rather than at the next rebuild. It does not need root. To
+then switch for real, `sudo nixos-rebuild switch --flake "$DREADHEADNIX#inspiron"`.
+
+These compose with `bs` — `cfg`, then `bs` on a section of the file.
+
 **`EDITOR` is `nvim`, not Emacs.** `Claude Code`, `git commit` and `frg` all use
 it. If you switch fully to Doom and want `emacsclient` instead, that is the
 variable to change.
