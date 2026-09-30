@@ -26,6 +26,9 @@ on:
 jobs:
   build-iso:
     runs-on: ubuntu-latest
+    # Needed to commit flake.lock back. Nothing else here writes to the repo.
+    permissions:
+      contents: write
     steps:
       - name: Free disk space
         # Two NixOS ISO builds plus their closures do not fit in the default
@@ -70,6 +73,28 @@ jobs:
 
       - name: Report sizes
         run: ls -lh result/iso/ result-test/iso/
+
+      - name: Persist flake.lock
+        # There is no committed lock, so the builds above resolved the flake's
+        # inputs and Nix wrote the result into the working tree. Without
+        # committing it, every run resolves fresh: the ISO would be built
+        # against a different nixpkgs each time, and a laptop running
+        # `--flake github:...#inspiron` would get a third one again.
+        #
+        # Committing it pins all three to the same revisions.
+        #
+        # `[skip actions]` is load-bearing: without it this push re-triggers the
+        # workflow, which locks again, and loops.
+        run: |
+          if [[ -z "$(git status --porcelain flake.lock)" ]]; then
+            echo "flake.lock unchanged"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flake.lock
+          git commit -m "Lock the flake inputs [skip actions]"
+          git push
 
       - name: Upload installer ISO
         uses: actions/upload-artifact@v4

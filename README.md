@@ -48,10 +48,20 @@ Override the defaults if needed: `DISK=/dev/nvme0n1 MOUNT=/mnt sudo -E /etc/drea
 sudo reboot
 ```
 
-The repo is baked into the installed system too, so updates come from there:
+The repo is baked into the installed system too, at `/etc/dreadheadnix` — but as
+a **frozen store path**, not a checkout. It is the commit the ISO was built from,
+so rebuilding from it is idempotent rather than an update.
+
+Rebuild from it when you want known-good, offline, or to roll back:
 
 ```sh
 sudo nixos-rebuild switch --flake /etc/dreadheadnix#inspiron
+```
+
+Update to the latest push by pointing at something that moves:
+
+```sh
+sudo nixos-rebuild switch --flake github:ademhoskin/dreadheadnix#inspiron
 ```
 
 ## Rehearse it first
@@ -170,10 +180,18 @@ printf 'export ANTHROPIC_AUTH_TOKEN=%s\n' '<token>' > ~/.config/claude/env
 
 Open a new shell and `claude` should start. See [Claude Code](#claude-code) below.
 
-### 3. Update to the current repo state
+### 3. Rebuild from what was just installed
 
 ```sh
 sudo nixos-rebuild switch --flake /etc/dreadheadnix#inspiron
+```
+
+That is **not an update.** `/etc/dreadheadnix` is a store path baked into the ISO, frozen at the commit it was built from. Rebuilding from it is idempotent, and it works with no network — which makes it the fallback when a newer build breaks something.
+
+To actually move forward, point at something that moves:
+
+```sh
+sudo nixos-rebuild switch --flake github:ademhoskin/dreadheadnix#inspiron
 ```
 
 ### 4. Verify the hardware

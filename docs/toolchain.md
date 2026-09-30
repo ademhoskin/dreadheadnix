@@ -47,8 +47,20 @@ cfgcheck    # build the config without switching to it
 
 `cfgcheck` is the one worth knowing: `nixos-rebuild build` builds the whole
 system and writes a `result` symlink, so a bad option name or broken import
-fails immediately rather than at the next rebuild. It does not need root. To
-then switch for real, `sudo nixos-rebuild switch --flake "$DREADHEADNIX#inspiron"`.
+fails immediately rather than at the next rebuild. It does not need root.
+
+To then switch for real, either build from the installed snapshot (offline, and
+idempotent — useful as a rollback):
+
+```sh
+sudo nixos-rebuild switch --flake "$DREADHEADNIX#inspiron"
+```
+
+or move forward to the latest push:
+
+```sh
+sudo nixos-rebuild switch --flake github:ademhoskin/dreadheadnix#inspiron
+```
 
 These compose with `bs` — `cfg`, then `bs` on a section of the file.
 

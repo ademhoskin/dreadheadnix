@@ -10,6 +10,10 @@
 set -euo pipefail
 
 REPO="${REPO:-/etc/dreadheadnix}"
+# Must match the git remote. The repo lands on the target as a store path with
+# no .git, so this cannot be derived at runtime — it only ever appears in the
+# printed update instructions.
+REPO_SLUG="ademhoskin/dreadheadnix"
 # The rehearsal overrides HOST so it can install a CI-only variant of the same
 # config. Everything below the flake attribute is identical either way.
 HOST="${HOST:-inspiron}"
@@ -52,10 +56,11 @@ nix eval --extra-experimental-features 'nix-command flakes' --raw \
 # --- Confirm the destructive step --------------------------------------------
 
 log "Target disk : $DISK"
-# Default columns only. The live image's lsblk rejects FILESYSTEM and MODEL
-# with "unknown column", so asking for them prints nothing useful at exactly the
-# moment the user needs to confirm they are about to erase the right disk.
-lsblk "$DISK" || true
+# FSTYPE, not FILESYSTEM — there is no FILESYSTEM column, and lsblk aborts the
+# whole call on one bad name rather than dropping it. That matters more here
+# than anywhere else: this is the preview shown immediately before an
+# irreversible wipe, and an empty preview is worse than no preview.
+lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL "$DISK" || true
 echo
 log "Everything on $DISK will be erased."
 read -r -p "Type the disk path again to confirm: " confirm
@@ -137,7 +142,10 @@ log "  2. Add the Claude token (it is not in the repo — that repo is public):"
 log "       install -Dm600 /dev/null ~/.config/claude/env"
 log "       printf 'export ANTHROPIC_AUTH_TOKEN=%s\n' '<token>' > ~/.config/claude/env"
 log ""
-log "  3. sudo nixos-rebuild switch --flake ${REPO}#${HOST}"
+log "  3. To rebuild from what was just installed (works offline):"
+log "       sudo nixos-rebuild switch --flake ${REPO}#${HOST}"
+log "     To update to the latest push:"
+log "       sudo nixos-rebuild switch --flake github:${REPO_SLUG}#${HOST}"
 log ""
 log "  4. Check the hardware — CI validates the config, not the machine:"
 log "       lspci -k | grep -A3 -i network   # Wi-Fi"

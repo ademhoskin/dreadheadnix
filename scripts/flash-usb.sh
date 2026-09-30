@@ -7,8 +7,12 @@
 # cannot install is never downloadable.
 #
 #   ./scripts/flash-usb.sh                  # list removable disks, then prompt
-#   ./scripts/flash-usb.sh -d /dev/sdX      # skip discovery
+#   ./scripts/flash-usb.sh -d sdb           # skip discovery (sdb or /dev/sdb)
 #   ./scripts/flash-usb.sh -i ./local.iso   # use a local ISO, skip the download
+#   ./scripts/flash-usb.sh -r               # re-download even if cached
+#
+# The ISO is cached in ~/.cache/dreadheadnix and only re-fetched when its hash
+# no longer matches the published one.
 #
 # DESTROYS EVERYTHING ON THE TARGET DEVICE. There is no undo.
 #
@@ -22,20 +26,25 @@ CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/dreadheadnix"
 ISO=""
 DEVICE=""
 ASSUME_YES=no
+REFRESH=no
 
 log() { printf '\033[1;36m[flash]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[flash] error:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
-  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+  # Print the whole header comment block, stopping at the first line that is not
+  # a comment. A fixed line range silently truncates the moment the header
+  # changes — and the line it drops first is the destructive warning.
+  awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
   exit "${1:-0}"
 }
 
-while getopts ":d:i:yh" opt; do
+while getopts ":d:i:yrh" opt; do
   case "$opt" in
     d) DEVICE="$OPTARG" ;;
     i) ISO="$OPTARG" ;;
     y) ASSUME_YES=yes ;;
+    r) REFRESH=yes ;;
     h) usage 0 ;;
     :) die "option -$OPTARG needs a value" ;;
     \?) die "unknown option -$OPTARG (try -h)" ;;
@@ -54,22 +63,35 @@ if [[ -z "$ISO" ]]; then
   mkdir -p "$CACHE_DIR"
   ISO="$CACHE_DIR/$ISO_NAME"
 
-  log "fetching $RELEASE_URL/$ISO_NAME"
-  curl -fL --progress-bar "$RELEASE_URL/$ISO_NAME" -o "$ISO.part" \
-    || die "download failed. Has the iso workflow published a release yet?"
-
-  log "fetching checksum"
+  # The checksum file is a few bytes; fetching it first is what makes the cache
+  # usable. Without comparing against the published hash there is no way to tell
+  # a cached copy from a stale one, so the ISO would be re-fetched every run.
+  log "checking the published checksum"
   curl -fsL "$RELEASE_URL/$ISO_NAME.sha256" -o "$ISO.sha256" \
     || die "could not fetch the checksum file; refusing to flash an unverified image."
 
-  # Move into place before verifying. The published .sha256 names the file
-  # "dreadheadnix.iso", and sha256sum -c looks for exactly that name in the
-  # working directory — so the .part file has to be renamed first.
-  mv "$ISO.part" "$ISO"
+  want="$(cut -d' ' -f1 < "$ISO.sha256")"
+  have=""
+  [[ -f "$ISO" ]] && have="$(sha256sum "$ISO" | cut -d' ' -f1)"
 
-  log "verifying checksum"
-  ( cd "$CACHE_DIR" && sha256sum -c "$ISO_NAME.sha256" ) \
-    || die "checksum mismatch — the download is corrupt or tampered with."
+  if [[ "$REFRESH" != yes && -n "$want" && "$have" == "$want" ]]; then
+    log "cached copy matches the published ISO — skipping the download"
+    log "  (pass --refresh to fetch it again anyway)"
+  else
+    [[ -n "$have" ]] && log "cached copy is stale or incomplete; re-fetching"
+    log "fetching $RELEASE_URL/$ISO_NAME"
+    curl -fL --progress-bar "$RELEASE_URL/$ISO_NAME" -o "$ISO.part" \
+      || die "download failed. Has the iso workflow published a release yet?"
+
+    # Rename before verifying: the published .sha256 names the file
+    # "dreadheadnix.iso", and sha256sum -c looks for exactly that name in the
+    # working directory.
+    mv "$ISO.part" "$ISO"
+
+    log "verifying checksum"
+    ( cd "$CACHE_DIR" && sha256sum -c "$ISO_NAME.sha256" ) \
+      || die "checksum mismatch — the download is corrupt or tampered with."
+  fi
 fi
 
 [[ -f "$ISO" ]] || die "ISO not found: $ISO"
@@ -92,6 +114,11 @@ if [[ -z "$DEVICE" ]]; then
   read -r -p "Device to write to (e.g. /dev/sdb): " DEVICE
   [[ -n "$DEVICE" ]] || die "no device given."
 fi
+
+# Accept "sdb" as well as "/dev/sdb" — on BOTH paths, so -d gets it too. The
+# prompt's own example invites the short form, and rejecting it is a pointless
+# papercut on a step that already has a typed confirmation behind it.
+[[ "$DEVICE" == /dev/* ]] || DEVICE="/dev/$DEVICE"
 
 [[ -b "$DEVICE" ]] || die "$DEVICE is not a block device."
 
@@ -122,7 +149,7 @@ fi
 # --- Confirm and write -------------------------------------------------------
 
 log "About to write to:"
-lsblk -o NAME,SIZE,TYPE,FILESYSTEM,MOUNTPOINT,MODEL "$DEVICE" | sed 's/^/  /'
+lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL "$DEVICE" | sed 's/^/  /'
 echo
 log "Every byte on $DEVICE will be destroyed."
 if [[ "$ASSUME_YES" != "yes" ]]; then

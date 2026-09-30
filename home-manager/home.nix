@@ -102,7 +102,16 @@ in {
       # would just print "no such file or directory".
       source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh
 
-      # history + autosuggest bindings
+      # Both of these stop a pasted command from behaving nothing like it looks.
+      # `#` is not a comment in an interactive shell without this, so a line
+      # copied with a trailing comment passes the comment to the program as
+      # arguments. And without magicequalsubst, `dd if=~/x` is not expanded —
+      # the tilde only expands at the start of a word, not after `=`, so the
+      # program receives a literal "~/x" and reports no such file.
+      setopt interactive_comments
+      setopt magicequalsubst
+
+      # history + autosuggest-binding
       bindkey '^p' history-search-backward
       bindkey '^n' history-search-forward
       bindkey "^f" autosuggest-accept
