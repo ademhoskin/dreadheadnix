@@ -168,7 +168,8 @@ consumed by whichever editor you use.
 | Zig | `zig` | — | `zig fmt` |
 | Java | `jdk21` | — | — |
 | .NET | `dotnet-sdk` | — | — |
-| Node / JS / TS | `nodejs`, `bun`, `pnpm`, `yarn` | `yaml-language-server` | `prettier` |
+| Node / JS / TS | `nodejs`, `bun`, `pnpm`, `yarn` | **none** — see below | `prettier` |
+| YAML | — | `yaml-language-server` | — |
 | Python | `python3`, `uv`, `pipx` | — | `black`, `isort` |
 | OCaml | `ocaml`, `opam`, `dune_3` | — | — |
 | Nix | — | `nil` | `nixfmt` |
@@ -179,6 +180,13 @@ consumed by whichever editor you use.
 
 Notes:
 
+- **There is no JavaScript/TypeScript language server installed.** Doom asks for
+  one — `(javascript +lsp)` and `(web +lsp)` — and LazyVim's `lang.typescript`
+  extra does too, but neither `typescript-language-server` nor `vtsls` is in
+  `home.packages`. Doom would find nothing on `PATH`; LazyVim may paper over it
+  by installing one through Mason into `~/.local/share/nvim`, which works
+  because `nix-ld` is enabled, but that is not managed by this repo and will not
+  survive a cleared nvim data dir. Adding one to `home.packages` is the fix.
 - **`nodejs` provides `npm`** — there is no separate `npm` package.
 - **`gotools` is what provides the `goimports` binary.** The attribute `goimports`
   does not exist.
