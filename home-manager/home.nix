@@ -24,6 +24,16 @@ in {
       };
       init.defaultBranch = "main";
       pull.rebase = true;
+
+      # delta was installed but never actually wired up, so it did nothing.
+      # These are the three settings that make it do anything at all; the
+      # diffFilter is what colours the diffs in `git add -p`.
+      core.pager = "delta";
+      interactive.diffFilter = "delta --color-only";
+      delta = {
+        navigate = true;
+        line-numbers = true;
+      };
     };
   };
 

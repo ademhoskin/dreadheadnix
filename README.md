@@ -87,6 +87,7 @@ A green `build-iso` means "this should install". A green `install-test` means "t
 | `nixos/tablet.nix` | 2-in-1 support: accelerometer rotation + on-screen keyboard |
 | `nixos/installer.nix` | The custom ISO: bakes the repo in at `/etc/dreadheadnix` |
 | `home-manager/home.nix` | Shell, git, zsh/p10k, Doom Emacs, dev toolchain |
+| `docs/toolchain.md` | Every dev tool: what it is, how to use it, and what it's wired into |
 | `install.sh` | Runs on the ISO: disko, then `nixos-install` |
 | `scripts/flash-usb.sh` | Downloads the published ISO, verifies it, writes it to a USB |
 | `dotfiles/` | Hyprland, alacritty, kitty, tmux, nvim, Doom, p10k, wallpaper |
