@@ -73,6 +73,7 @@
        ;; by lang/cc, and sql.el ships with Emacs itself, so both still work —
        ;; they just are not modules you can enable.
        cc
+       csharp
        data
        emacs-lisp
        go
@@ -80,8 +81,10 @@
        (javascript +lsp)
        json
        kotlin
+       lua
        markdown
        nix
+       ocaml
        org
        python
        rust

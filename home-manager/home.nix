@@ -379,8 +379,40 @@ in {
     shfmt
     shellcheck
 
-    # misc
+    # --- Language servers ---
+    #
+    # One per language in docs/toolchain.md, so `+lsp` in Doom and LazyVim's
+    # lang extras find what they ask for on PATH. Without these, an editor
+    # requests an LSP, finds nothing, and silently gives you no completions —
+    # which reads as "the editor is bad" rather than "the server is missing".
+    #
+    # Both TS servers are here on purpose: LazyVim defaults to vtsls, Doom's
+    # javascript module expects typescript-language-server.
+    typescript-language-server
+    vtsls
+    vscode-langservers-extracted   # json, css, html, eslint
+    tailwindcss-language-server
+    basedpyright                   # python; pyright is the slower sibling
+    ruff                           # python lint + format + LSP, one binary
+    lua-language-server
+    zls                            # zig
+    bash-language-server
+    marksman                       # markdown
+    sqls
+    dockerfile-language-server
+    jdt-language-server            # java
+    csharp-ls                      # C# / .NET
+    ocamlPackages.ocaml-lsp
     yaml-language-server
+
+    # --- Debug adapters ---
+    #
+    # gdb, lldb, delve and debugpy are in the language blocks above. These are
+    # the ones the other ecosystems need.
+    vscode-js-debug                # node / chrome
+    netcoredbg                     # .NET
+
+    # misc
     awscli2
     subversion
   ];

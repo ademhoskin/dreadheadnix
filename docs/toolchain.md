@@ -160,34 +160,40 @@ the Doom config.
 Each entry is the compiler, the language server and the formatter. The LSPs are
 consumed by whichever editor you use.
 
-| Language | Compiler / runtime | LSP | Formatter |
-| --- | --- | --- | --- |
-| C / C++ | `clang`, `lld` | `clang-tools` (clangd) | `clang-format` |
-| Rust | `cargo`, `rustc` | `rust-analyzer` | `rustfmt` |
-| Go | `go` | `gopls` | `gofumpt`, `gotools` |
-| Zig | `zig` | — | `zig fmt` |
-| Java | `jdk21` | — | — |
-| .NET | `dotnet-sdk` | — | — |
-| Node / JS / TS | `nodejs`, `bun`, `pnpm`, `yarn` | **none** — see below | `prettier` |
-| YAML | — | `yaml-language-server` | — |
-| Python | `python3`, `uv`, `pipx` | — | `black`, `isort` |
-| OCaml | `ocaml`, `opam`, `dune_3` | — | — |
-| Nix | — | `nil` | `nixfmt` |
-| Lua | — | — | `stylua` |
-| Shell | — | — | `shfmt`, `shellcheck` |
+| Language | Compiler / runtime | LSP | Formatter | Debugger |
+| --- | --- | --- | --- | --- |
+| C / C++ | `clang`, `lld` | `clang-tools` (clangd) | `clang-format` | `gdb`, `lldb` |
+| Rust | `cargo`, `rustc` | `rust-analyzer` | `rustfmt` | `lldb` |
+| Go | `go` | `gopls` | `gofumpt`, `gotools` | `delve` |
+| Zig | `zig` | `zls` | `zig fmt` | `gdb` |
+| Java | `jdk21` | `jdt-language-server` | — | `jdt-language-server` |
+| .NET / C# | `dotnet-sdk` | `csharp-ls` | — | `netcoredbg` |
+| Node / JS / TS | `nodejs`, `bun`, `pnpm`, `yarn` | `typescript-language-server`, `vtsls` | `prettier` | `vscode-js-debug` |
+| Python | `python3`, `uv`, `pipx` | `basedpyright` | `ruff`, `black`, `isort` | `python3Packages.debugpy` |
+| OCaml | `ocaml`, `opam`, `dune_3` | `ocamlPackages.ocaml-lsp` | — | — |
+| Nix | — | `nil` | `nixfmt` | — |
+| Lua | — | `lua-language-server` | `stylua` | — |
+| Shell | — | `bash-language-server` | `shfmt`, `shellcheck` | — |
+| YAML | — | `yaml-language-server` | — | — |
+| JSON / CSS / HTML | — | `vscode-langservers-extracted` | `prettier` | — |
+| Markdown | — | `marksman` | — | — |
+| SQL | — | `sqls` | — | — |
+| Docker | — | `dockerfile-language-server` | — | — |
 | Build systems | `gnumake`, `cmake`, `ninja`, `pkg-config` | — | — |
 | Debugging | `gdb`, `valgrind`, `delve`, `lldb` | — | — |
 
 Notes:
 
-- **There is no JavaScript/TypeScript language server installed.** Doom asks for
-  one — `(javascript +lsp)` and `(web +lsp)` — and LazyVim's `lang.typescript`
-  extra does too, but neither `typescript-language-server` nor `vtsls` is in
-  `home.packages`. Doom would find nothing on `PATH`; LazyVim may paper over it
-  by installing one through Mason into `~/.local/share/nvim`, which works
-  because `nix-ld` is enabled, but that is not managed by this repo and will not
-  survive a cleared nvim data dir. Adding one to `home.packages` is the fix.
+- **Two TypeScript servers are installed on purpose.** LazyVim's
+  `lang.typescript` extra defaults to `vtsls`; Doom's `javascript` module with
+  `+lsp` expects `typescript-language-server`. Installing only one leaves the
+  other editor silently without completions.
+- **`ruff` does lint, format and LSP in one binary**, which overlaps `black` and
+  `isort`. All three are installed; point your hooks at whichever you prefer
+  rather than assuming one shadows the other.
 - **`nodejs` provides `npm`** — there is no separate `npm` package.
+- Debuggers are DAP adapters. Doom drives them through `dape`; see
+  `docs/doom.md`.
 - **`gotools` is what provides the `goimports` binary.** The attribute `goimports`
   does not exist.
 - **`python3Packages.debugpy`**, not `debugpy`.

@@ -88,6 +88,7 @@ A green `build-iso` means "this should install". A green `install-test` means "t
 | `nixos/installer.nix` | The custom ISO: bakes the repo in at `/etc/dreadheadnix` |
 | `home-manager/home.nix` | Shell, git, zsh/p10k, Doom Emacs, dev toolchain |
 | `docs/toolchain.md` | Every dev tool: what it is, how to use it, and what it's wired into |
+| `docs/doom.md` | Doom Emacs workflow — leader menu, LSP, debugger, git, Neovim translation |
 | `install.sh` | Runs on the ISO: disko, then `nixos-install` |
 | `scripts/flash-usb.sh` | Downloads the published ISO, verifies it, writes it to a USB |
 | `dotfiles/` | Hyprland, alacritty, kitty, tmux, nvim, Doom, p10k, wallpaper |
@@ -98,6 +99,8 @@ A green `build-iso` means "this should install". A green `install-test` means "t
 **Doom Emacs** is the default, with evil mode. `dotfiles/doom/` holds `init.el` (the module list), `config.el` (settings), and `packages.el` (extra packages).
 
 Note that Doom skips a module it cannot resolve without any error or warning — a typo in `init.el` costs you the feature and tells you nothing.
+
+**[docs/doom.md](docs/doom.md) is the orientation guide** — the leader menu, LSP and debugger bindings, magit, and a Neovim-to-Doom translation table. Worth reading if you are arriving from Neovim, which is how this was written.
 
 Doom cannot live in the Nix store, because `doom sync` compiles packages into `~/.config/emacs/.local`. So `home-manager` clones Doom into `~/.config/emacs` on first activation and symlinks only the three config files. After changing `init.el` or `packages.el`:
 
