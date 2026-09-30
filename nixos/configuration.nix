@@ -53,6 +53,16 @@
   networking = {
     hostName = "inspiron";
     networkmanager.enable = true;
+
+    # iwd as NetworkManager's Wi-Fi backend — what this machine ran on Arch.
+    # The concrete difference is WPS: NetworkManager has no WPS command at any
+    # version, while iwd exposes `iwctl wsc <device> push-button`. It also
+    # replaces wpa_supplicant for association itself.
+    #
+    # Weaker than wpa_supplicant on enterprise 802.1X (eduroam and similar) and
+    # on some older hardware; fine for WPA2/WPA3 home networks.
+    wireless.iwd.enable = true;
+    networkmanager.wifi.backend = "iwd";
   };
 
   # --- User ---
