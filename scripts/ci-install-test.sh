@@ -20,8 +20,12 @@ mkdir -p "$WORK"
 PORT="${SSH_PORT:-2222}"
 # 4G was not enough: install.sh died with exit 137 (SIGKILL) partway through
 # nixos-install, which is the OOM killer. Evaluating a full NixOS config and
-# assembling its closure peaks well above that, and the live image has no swap
-# to fall back on. GitHub's standard runners have 16G, so 8G is safe here.
+# assembling its closure peaks well above that.
+#
+# The ISO now enables zram (see nixos/installer.nix), so the live environment has
+# a swap safety net where it previously had none. This stays at 8G anyway —
+# swapping is a floor, not a fix, and avoiding it is much faster. GitHub's
+# standard runners have 16G, so there is room.
 MEM="${MEM:-8192}"
 DISK_SIZE="${DISK_SIZE:-20G}"
 # The disk is attached as a QEMU NVMe device, not virtio-blk, so the guest sees

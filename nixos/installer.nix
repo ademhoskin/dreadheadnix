@@ -8,6 +8,9 @@
 # What this module adds on top:
 #   * the repo itself, baked in at /etc/dreadheadnix
 #   * the disko CLI at the exact revision this flake locks
+#   * the experimental Nix CLI, which the live image does not enable
+#   * zram, because the installer otherwise has no swap at all
+#   * a cheaper squashfs compression level, to cut build time
 { lib, pkgs, inputs, ... }:
 
 {
@@ -30,6 +33,20 @@
   # flakes; without this the very first check fails with
   # "experimental Nix feature 'nix-command' is disabled".
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  # Compressed swap for the live environment. installation-cd-base.nix forces
+  # `swapDevices = lib.mkImageMediaOverride []`, so the installer has no swap at
+  # all by default — and evaluating a full NixOS config while assembling its
+  # closure is memory-hungry enough that a low-RAM machine will simply be
+  # OOM-killed partway through nixos-install, with the disk already wiped.
+  #
+  # zramSwap is unaffected by that override: it drives zram-generator through
+  # systemd units rather than the swapDevices list. So the installer makes its
+  # own headroom instead of requiring the machine to already have enough.
+  zramSwap = {
+    enable = true;
+    memoryPercent = 50;
+  };
 
   # disko's CLI refuses to run when its version differs from the one the flake
   # locked, so take it from the flake input rather than from pkgs.
